@@ -1,0 +1,3486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Little Lion Fund</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #d9e0f0;
+      --surf: #eef3fb;
+      --card: #ffffff;
+      --border: #cddaef;
+      --accent: #2d4a3e;
+      --blue: #5e7fd0;
+      --green: #3fa874;
+      --red: #c95f5f;
+      --yellow: #c09040;
+      --text: #1a2840;
+      --muted: #64708c;
+      --dim: #eef3fb;
+      --chart-bg: #eef3fb;
+      --nav-bg: #ffffff;
+      --sh: 0 2px 10px rgba(45, 74, 62, 0.10), 0 0 0 1px rgba(45, 74, 62, 0.07);
+    }
+
+    html,
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      font-size: 13px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--blue);
+      border-radius: 4px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2563ebcc
+    }
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      appearance: none;
+      -webkit-appearance: none;
+      margin: 0
+    }
+
+    input[type=number] {
+      -moz-appearance: textfield;
+      appearance: textfield
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .25
+      }
+    }
+
+    @keyframes fin {
+      from {
+        opacity: 0;
+        transform: translateY(10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(.98)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1)
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    @keyframes rowIn {
+      from {
+        opacity: 0;
+        transform: translateX(-6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes drawLine {
+      to {
+        stroke-dashoffset: 0
+      }
+    }
+
+    @keyframes bounce {
+
+      0%,
+      20%,
+      50%,
+      80%,
+      100% {
+        transform: translateY(0)
+      }
+
+      40% {
+        transform: translateY(-6px)
+      }
+
+      60% {
+        transform: translateY(-3px)
+      }
+    }
+
+    @keyframes wiggle {
+
+      0%,
+      100% {
+        transform: rotate(0deg)
+      }
+
+      25% {
+        transform: rotate(-3deg)
+      }
+
+      75% {
+        transform: rotate(3deg)
+      }
+    }
+
+
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0)
+      }
+
+      10%,
+      30%,
+      50%,
+      70%,
+      90% {
+        transform: translateX(-2px)
+      }
+
+      20%,
+      40%,
+      60%,
+      80% {
+        transform: translateX(2px)
+      }
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0)
+      }
+
+      50% {
+        transform: translateY(-4px)
+      }
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg)
+      }
+
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    @keyframes ripple {
+      0% {
+        transform: scale(0);
+        opacity: 1
+      }
+
+      100% {
+        transform: scale(4);
+        opacity: 0
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      50% {
+        opacity: 1
+      }
+
+      51%,
+      100% {
+        opacity: 0
+      }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-20px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(20px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes zoomIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1)
+      }
+    }
+
+    @keyframes underlineSlide {
+      from {
+        border-bottom-width: 0
+      }
+
+      to {
+        border-bottom-width: 2px
+      }
+    }
+
+    .fin {
+      animation: fin .25s cubic-bezier(.22, .68, 0, 1.2) both
+    }
+
+    .bounce {
+      animation: bounce .6s ease
+    }
+
+    .wiggle {
+      animation: wiggle .5s ease
+    }
+
+    .glow {
+      animation: glow 2s ease-in-out infinite
+    }
+
+    .shake {
+      animation: shake .5s ease
+    }
+
+    .float {
+      animation: float 3s ease-in-out infinite
+    }
+
+    .spin {
+      animation: spin 1s linear infinite
+    }
+
+    .ripple {
+      animation: ripple .6s ease-out
+    }
+
+    .blink {
+      animation: blink 1s infinite
+    }
+
+    .slide-in-left {
+      animation: slideInLeft .3s ease-out
+    }
+
+    .slide-in-right {
+      animation: slideInRight .3s ease-out
+    }
+
+    .zoom-in {
+      animation: zoomIn .3s ease-out
+    }
+
+    .underline-slide {
+      animation: underlineSlide .3s ease
+    }
+
+    #gtt {
+      display: none;
+      position: fixed;
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 13px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.15);
+      letter-spacing: 0.2px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+    #gtt.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+
+    #ls {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000
+    }
+
+    .ls-wrap {
+      width: 300px;
+      text-align: center
+    }
+
+    .ls-logo {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 44px;
+      letter-spacing: -1px;
+      color: var(--accent);
+      margin-bottom: 4px;
+      animation: float 3s ease-in-out infinite
+    }
+
+    .ls-logo span {
+      color: var(--blue)
+    }
+
+    .ls-sub {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      margin-bottom: 38px;
+      font-weight: 600
+    }
+
+    .ls-msg {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      min-height: 20px;
+      font-weight: 500
+    }
+
+    .ls-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-bottom: 8px;
+      overflow: hidden
+    }
+
+    .ls-fill {
+      height: 3px;
+      background: var(--blue);
+      border-radius: 2px;
+      transition: width .5s ease;
+      width: 0%;
+      animation: glow 1s ease-in-out infinite
+    }
+
+    .ls-detail {
+      font-size: 11px;
+      color: #94a3b8;
+      min-height: 16px;
+      margin-bottom: 10px
+    }
+
+    .ls-tickers {
+      font-size: 10px;
+      font-family: 'DM Sans', sans-serif;
+      min-height: 22px;
+      display: none;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px 10px;
+      background: var(--dim);
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      text-align: left;
+      letter-spacing: .3px;
+      margin-bottom: 4px
+    }
+
+    .ls-credits {
+      font-size: 11px;
+      color: #64748b;
+      letter-spacing: .6px;
+      font-style: italic;
+      position: fixed;
+      bottom: 18px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      pointer-events: none
+    }
+
+    .ls-keybtn {
+      display: none;
+      padding: 9px 20px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      transition: background .15s
+    }
+
+    .ls-keybtn:hover {
+      background: var(--blue)
+    }
+
+    .ls-err {
+      display: none;
+      margin-top: 16px;
+      padding: 14px 18px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--red);
+      line-height: 1.7;
+      text-align: left;
+      animation: wiggle .5s ease
+    }
+
+
+    #app {
+      display: none
+    }
+
+    nav {
+      background: var(--nav-bg);
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0;
+    }
+
+    .logo {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 21px;
+      letter-spacing: -.5px;
+      color: var(--accent)
+    }
+
+    .logo span {
+      color: var(--blue)
+    }
+
+    .tab {
+      padding: 7px 15px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(26,40,64,0.55);
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .tab i {
+      font-size: 10px;
+      transition: transform .2s
+    }
+
+    .tab:hover {
+      color: var(--accent)
+    }
+
+    .tab:hover i {
+      transform: scale(1.1)
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent)
+    }
+
+
+    .nr {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px
+    }
+
+    .ld {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600
+    }
+
+    .dotv {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite
+    }
+
+    .kbtn {
+      height: 32px;
+      padding: 0 13px;
+      border-radius: 7px;
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.10);
+      color: rgba(26,40,64,0.65);
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s
+    }
+
+    .kbtn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,0,0,0.08)
+    }
+
+    .kbtn:active {
+      transform: scale(.98)
+    }
+
+    .sg {
+      padding: 18px 28px 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px
+    }
+
+    .sc {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: var(--sh);
+      cursor: default
+    }
+
+    .sl {
+      font-size: 11px;
+      letter-spacing: 0;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .sv {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 1.2
+    }
+
+    #content {
+      padding: 18px 28px 52px
+    }
+
+    /* dashboard */
+    .dg {
+      display: grid;
+      grid-template-columns: 1fr 275px;
+      gap: 16px
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--sh);
+      overflow: hidden;
+      animation: slideUp .2s ease both;
+    }
+
+    .ph {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      letter-spacing: 0;
+      color: var(--muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    thead tr {
+      background: var(--dim)
+    }
+
+    th {
+      padding: 10px 15px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+      white-space: nowrap;
+      text-transform: uppercase
+    }
+
+    th:first-child {
+      text-align: left
+    }
+
+    td {
+      padding: 11px 15px;
+      border-bottom: 1px solid #e2e5eb;
+      text-align: right;
+      white-space: nowrap;
+      font-size: 13px;
+      transition: padding .1s
+    }
+
+    td:first-child {
+      text-align: left
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background .12s
+    }
+
+    tbody tr:hover {
+      background: rgba(37, 99, 235, 0.13)
+    }
+
+    tbody tr:hover td {
+      color: var(--text)
+    }
+
+    .tcell {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .d9 {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .tn {
+      font-weight: 700;
+      font-size: 14px
+    }
+
+    .tsub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .sbadge {
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      border: 1px solid currentColor;
+      opacity: 0.85
+    }
+
+    .apanel {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--sh);
+      padding: 20px;
+      animation: slideUp .2s .05s ease both;
+    }
+
+    .alist {
+      margin-top: 10px
+    }
+
+    .arow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px
+    }
+
+    .arow:last-child {
+      border-bottom: none
+    }
+
+    .aname {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted)
+    }
+
+    .sec-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px
+    }
+
+    .sec-card {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--sh);
+      overflow: hidden;
+      animation: slideInLeft .3s ease both
+    }
+
+    .sec-hdr {
+      padding: 14px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      background: var(--dim)
+    }
+
+    .sec-name {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--accent)
+    }
+
+    .sec-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%
+    }
+
+    .sec-stats {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 12px;
+      font-weight: 500
+    }
+
+    .sec-body {
+      padding: 20px 22px;
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+      align-items: start
+    }
+
+    .chart-div {
+      width: 100%;
+      background: var(--chart-bg);
+      border-radius: 12px;
+      padding: 8px
+    }
+
+    .stock-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px
+    }
+
+    .stk-card {
+      background: var(--dim);
+      border-radius: 10px;
+      padding: 13px 14px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: border-color .15s
+    }
+
+    .stk-card:hover {
+      border-color: var(--blue);
+    }
+
+    .stk-title {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 2px
+    }
+
+    .stk-sub {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 8px
+    }
+
+    .stk-foot {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 6px
+    }
+
+    .perf-hdr {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap
+    }
+
+    .bbtn {
+      padding: 6px 14px;
+      border-radius: 7px;
+      background: var(--dim);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s
+    }
+
+    .bbtn:hover {
+      background: #eff6ff;
+      border-color: var(--blue);
+      color: var(--blue)
+    }
+
+    .bbtn i {
+      transition: transform .15s
+    }
+
+    .bbtn:hover i {
+      transform: translateX(-2px)
+    }
+
+    .ptitle {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent)
+    }
+
+    .pstats {
+      display: flex;
+      gap: 12px 20px;
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+      min-width: 0;
+      overflow: hidden
+    }
+
+    .pstats b {
+      font-weight: 600;
+      color: var(--text)
+    }
+
+    .chdiv {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--sh);
+      padding: 26px;
+      animation: scaleIn .3s ease both
+    }
+
+    .clbl {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      font-weight: 600;
+      text-transform: uppercase
+    }
+
+    .sgrid {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px
+    }
+
+    .scard {
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: var(--sh);
+      padding: 14px 16px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: border-color .15s, transform .12s, box-shadow .15s
+    }
+
+    .scard:hover {
+      border-color: var(--blue);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.1);
+      animation: zoomIn .2s ease
+    }
+
+    .hgrid {
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      gap: 16px
+    }
+
+    .fpanel {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--sh);
+      padding: 24px;
+      animation: zoomIn .3s ease both
+    }
+
+    .fl {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+      text-transform: uppercase
+    }
+
+    .fi {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surf);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color .2s, box-shadow .2s
+    }
+
+    .fi:focus {
+      border-color: var(--blue);
+      transform: scale(1.02)
+    }
+
+    .cd-trigger {
+      padding: 0 12px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surf);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all .2s;
+      min-width: 140px
+    }
+
+    .cd-trigger:hover {
+      border-color: var(--blue);
+      background: rgba(37, 99, 235, 0.02)
+    }
+
+    .cd-menu {
+      position: fixed;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      border-radius: 12px;
+      z-index: 9999;
+      min-width: 200px;
+      overflow: hidden;
+      animation: popIn .2s ease forwards;
+      transform-origin: top left
+    }
+
+    .cd-item {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .cd-item:hover {
+      background: var(--blue);
+      color: #fff
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+
+    .fg {
+      margin-bottom: 14px
+    }
+
+    .fb {
+      width: 100%;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px
+    }
+
+    .fb:hover {
+      background: #1e362d;
+      box-shadow: 0 4px 12px rgba(45, 74, 62, 0.2)
+    }
+
+    .fb:active {
+      transform: scale(.98)
+    }
+
+    .fb:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      opacity: 0.7;
+      transform: none
+    }
+
+    .fcb {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 11px;
+      margin-top: 8px;
+      font-family: 'DM Sans', sans-serif;
+      transition: all .15s
+    }
+
+    .fcb:hover {
+      background: var(--dim);
+      color: var(--text)
+    }
+
+    .ftip {
+      margin-top: 16px;
+      padding: 13px;
+      background: var(--dim);
+      border-radius: 8px;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 2;
+      border: 1px solid var(--border)
+    }
+
+    .hlp {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--sh);
+      overflow: hidden;
+      animation: fadeIn .3s ease both;
+      display: flex;
+      flex-direction: column
+    }
+
+    .hlh {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--dim)
+    }
+
+    .hls {
+      overflow-y: auto;
+      flex: 1
+    }
+
+    .hrow {
+      padding: 12px 18px;
+      border-bottom: 1px solid #e2e5eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background .12s, padding-left .1s
+    }
+
+    .hrow:hover {
+      background: rgba(37, 99, 235, 0.13)
+    }
+
+    .hi {
+      display: flex;
+      align-items: center;
+      gap: 9px
+    }
+
+    .hname {
+      font-weight: 700;
+      font-size: 13px
+    }
+
+    .hsub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .hrt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px
+    }
+
+    .rmbtn {
+      background: transparent;
+      border: 1px solid #dc262630;
+      color: var(--red);
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 10px;
+      font-family: 'DM Sans', sans-serif;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 4px
+    }
+
+    .rmbtn:hover {
+      background: #fef2f2;
+      border-color: var(--red)
+    }
+
+    .sector-tag {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--dim);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s
+    }
+
+    .sector-tag:hover {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue)
+    }
+
+    #donut-canvas {
+      display: block
+    }
+
+    .nav-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      padding: 0 28px;
+      gap: 0;
+    }
+    .nav-top .tabs {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+      padding: 0 16px;
+      height: 100%;
+      align-items: stretch;
+    }
+    .nav-top .tab {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -1px;
+    }
+    .nav-top .tab.active {
+      border-bottom: 3px solid var(--accent) !important;
+      color: var(--accent);
+    }
+    .nav-top .tab:hover:not(.active) {
+      color: var(--accent);
+      border-bottom: 3px solid rgba(45,74,62,0.25);
+    }
+    .nav-bottom {
+      display: none;
+    }
+    .tabs {
+      display: flex;
+      gap: 2px;
+    }
+
+    .sec-content {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 0;
+      align-items: start;
+    }
+    .sec-chart-col {
+      padding: 20px 22px;
+      border-right: 1px solid var(--border);
+    }
+    .sec-cards-col {
+      padding: 20px 22px;
+    }
+    .sec-cards-col .stock-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 768px) {
+      html, body { font-size: 12px }
+
+      .nav-top {
+        padding: 8px 14px;
+        height: auto;
+        min-height: 48px;
+        flex-wrap: nowrap;
+        gap: 10px;
+        justify-content: flex-start;
+      }
+      .nav-top .logo { flex-shrink: 0; overflow: hidden; max-width: 44px }
+      .nav-top .nr { margin-left: auto; flex-shrink: 0 }
+      .nav-top .tabs { display: none !important }
+      .nav-bottom { display: flex !important; padding: 0 14px; border-top: 1px solid rgba(0,0,0,0.08) }
+
+      #live-lbl { font-size: 11px !important }
+      #next-update { display: inline !important; font-size: 11px !important; padding-right: 8px !important; border-right: none !important; white-space: nowrap }
+      .nr { font-size: 11px; gap: 6px; flex-wrap: nowrap }
+      .nr .kbtn { height: 28px; padding: 0 8px; font-size: 10px }
+      .nr .fb { height: 28px; padding: 0 10px !important; font-size: 10px !important }
+      .nr .fb i { font-size: 10px }
+
+      .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        width: 100%;
+        gap: 0;
+      }
+      .tabs::-webkit-scrollbar { display: none }
+      .tab {
+        padding: 10px 12px;
+        font-size: 9px;
+        letter-spacing: 0.7px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        border-bottom: 3px solid transparent;
+      }
+      .tab.active { border-bottom: 3px solid var(--accent) }
+
+      .sg {
+        padding: 10px 12px 0;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px;
+      }
+      .sg > div:last-child { grid-column: 1 / -1 }
+      .sc { padding: 12px 14px }
+      .sv { font-size: 17px }
+
+      #content { padding: 10px 12px 52px }
+
+      .dg { grid-template-columns: 1fr }
+      .dg > div:last-child { order: -1 }
+
+      .scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: var(--blue) var(--dim);
+      }
+      .scroll-x::-webkit-scrollbar { height: 5px }
+      .scroll-x::-webkit-scrollbar-track { background: var(--dim); border-radius: 3px }
+      .scroll-x::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 3px }
+
+      table { min-width: 680px }
+
+      .hgrid { grid-template-columns: 1fr }
+      .hrow { padding: 10px 12px }
+      .hname { font-size: 12px }
+      .hsub { font-size: 10px }
+      .hrt { gap: 6px; font-size: 11px }
+
+      .sec-body { grid-template-columns: 1fr; padding: 14px; gap: 16px }
+      .sec-content { grid-template-columns: 1fr; }
+      .sec-chart-col { padding: 14px 16px; border-right: none; border-bottom: 1px solid var(--border); }
+      .sec-cards-col { padding: 14px 16px; max-height: none; overflow-y: visible; }
+      .sec-cards-col .stock-grid { grid-template-columns: 1fr 1fr; }
+      .sec-hdr { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+      .sec-name { font-size: 15px; }
+      .sec-stats { gap: 12px; }
+      .stock-grid { grid-template-columns: 1fr 1fr }
+
+      .sgrid { grid-template-columns: 1fr 1fr }
+      .perf-hdr { gap: 8px }
+      .ptitle { font-size: 15px }
+      .chdiv { padding: 16px }
+
+      .dg[style*="1.3fr"] { grid-template-columns: 1fr !important }
+
+      .alloc-compare-grid { grid-template-columns: 1fr !important }
+      .alloc-compare-grid > div:first-child {
+        border-right: none !important;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .apanel, .fpanel { padding: 14px }
+
+      input.fi, input[type="number"], input[type="text"],
+      input[type="password"], input[type="date"] { font-size: 16px !important }
+
+      #delete-modal > div:last-child > div,
+      #weight-delete-modal > div:last-child > div {
+        width: calc(100vw - 32px) !important;
+        padding: 22px !important;
+        border-radius: 14px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .sg { grid-template-columns: 1fr 1fr }
+      .sg > div:last-child { grid-column: unset }
+      .sgrid { grid-template-columns: 1fr }
+      .nr .fb { font-size: 10px; padding: 0 10px }
+      .nr .kbtn { padding: 0 8px }
+      #next-update { font-size: 9px !important; padding-right: 8px !important }
+      .tab { padding: 10px 9px; font-size: 8.5px }
+    }
+    @media (min-width: 769px) {
+      .ls-wrap { width: 420px }
+      #ls img[alt="Little Lion Fund"] { height: 70px !important }
+    }
+    @media (max-width: 768px) {
+      .uv-stats { grid-template-columns: 1fr !important }
+      .uv-charts { grid-template-columns: 1fr !important }
+    }
+    @media (min-width: 769px) and (max-width: 1100px) {
+      .uv-charts { grid-template-columns: 1fr !important }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="gtt"></div>
+
+      
+  <div id="ls">
+    <div class="ls-wrap">
+      <div style="display:flex;justify-content:center;margin-bottom:20px"><img src="/wide-logo.png"
+          alt="Little Lion Fund" style="height:44px;animation:float 3s ease-in-out infinite" /></div>
+      <div class="ls-msg" id="lm">Fetching live prices…</div>
+      <div class="ls-bar">
+        <div class="ls-fill" id="lf"></div>
+      </div>
+      <div class="ls-detail" id="ld"></div>
+      <div class="ls-tickers" id="ls-tickers"></div>
+      <div style="margin-bottom:20px"></div>
+      <div>
+        <button class="ls-skip" id="ls-skip" onclick="skipHistory()"
+          style="display:none;padding:9px 20px;border-radius:8px;background:#f59e0b;color:#fff;border:none;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600;margin-right:10px;transition:background .15s"
+          title="Load the app without chart history"><i class="fa-solid fa-forward"></i>&nbsp;Skip History</button>
+        <button class="ls-keybtn" id="ls-kbtn" onclick="openKeyModal()"><i class="fa-solid fa-key"></i>&nbsp;Change API
+          Key</button>
+      </div>
+      <div class="ls-err" id="ls-err"></div>
+      <div class="ls-credits" id="ls-credits"></div>
+    </div>
+  </div>
+
+
+  <div id="app">
+    <nav>
+      <div class="nav-top">
+        <div class="logo" style="display:flex;align-items:center;flex-shrink:0;overflow:hidden"><img src="/sq-logo.png" alt="LLF" style="height:32px;max-width:100%;pointer-events:none;user-select:none;-webkit-user-select:none;display:block" /></div>
+        <div class="tabs">
+          <button class="tab active" onclick="setTab('dashboard')"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+          <button class="tab" onclick="setTab('sectors')"><i class="fa-solid fa-layer-group"></i> Sectors</button>
+          <button class="tab" onclick="setTab('performance')"><i class="fa-solid fa-chart-line"></i> Performance</button>
+          <button class="tab" onclick="setTab('holdings')"><i class="fa-solid fa-briefcase"></i> Holdings</button>
+          <button class="tab" onclick="setTab('weightings')"><i class="fa-solid fa-scale-balanced"></i> Weightings</button>
+          <button class="tab" onclick="setTab('unitvalue')"><i class="fa-solid fa-coins"></i>&nbsp;Unit Value</button>
+        </div>
+        <div class="nr">
+          <span id="next-update" style="font-size:11px;font-weight:700;letter-spacing:0.5px;white-space:nowrap;padding-right:14px;border-right:1px solid rgba(0,0,0,0.1)">Updating in 02:00</span>
+          <button class="kbtn" onclick="openKeyModal()"><i class="fa-solid fa-key"></i></button>
+          <button class="fb" onclick="saveAllDataUI()" style="width:auto;padding:0 16px;background:var(--green);font-size:11px"><i class="fa-solid fa-cloud-arrow-up"></i>&nbsp;Save All</button>
+        </div>
+      </div>
+      <div class="nav-bottom">
+        <div class="tabs">
+          <button class="tab active" onclick="setTab('dashboard')"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+          <button class="tab" onclick="setTab('sectors')"><i class="fa-solid fa-layer-group"></i> Sectors</button>
+          <button class="tab" onclick="setTab('performance')"><i class="fa-solid fa-chart-line"></i> Performance</button>
+          <button class="tab" onclick="setTab('holdings')"><i class="fa-solid fa-briefcase"></i> Holdings</button>
+          <button class="tab" onclick="setTab('weightings')"><i class="fa-solid fa-scale-balanced"></i> Weightings</button>
+          <button class="tab" onclick="setTab('unitvalue')"><i class="fa-solid fa-coins"></i>&nbsp;Unit Value</button>
+        </div>
+      </div>
+    </nav>
+    <div class="sg">
+      <div class="sc" style="animation:slideUp .2s .02s ease both">
+        <div class="sl"><i class="fa-solid fa-wallet"></i>&nbsp;Portfolio Value</div>
+        <div class="sv" id="sv">—</div>
+      </div>
+      <div class="sc" style="animation:slideUp .2s .04s ease both">
+        <div class="sl"><i class="fa-solid fa-receipt"></i>&nbsp;Cost Basis</div>
+        <div class="sv" id="sco" style="color:var(--muted)">—</div>
+      </div>
+      <div class="sc" style="animation:slideUp .2s .06s ease both">
+        <div class="sl"><i class="fa-solid fa-arrow-trend-up"></i>&nbsp;Unrealized P&amp;L</div>
+        <div class="sv" id="sp">—</div>
+      </div>
+      <div class="sc" style="animation:slideUp .2s .08s ease both">
+        <div class="sl"><i class="fa-solid fa-calendar-day"></i>&nbsp;Day Change</div>
+        <div class="sv" id="sd">—</div>
+      </div>
+      <div class="sc" style="animation:slideUp .2s .10s ease both">
+        <div class="sl"><i class="fa-solid fa-coins"></i>&nbsp;Unit Value</div>
+        <div class="sv" id="su">—</div>
+      </div>
+    </div>
+    <div id="content"></div>
+  </div>
+
+  <script>
+    let API_KEY = localStorage.getItem("llf_key") || "d76ma01r01qtg3ne4uc0d76ma01r01qtg3ne4ucg";
+    const FB = "https://finnhub.io/api/v1";
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    const SM = {
+      "Information Technology": { color: "#2563eb" },
+      "Communication Services": { color: "#7c3aed" },
+      "Consumer Staples": { color: "#059669" },
+      "Consumer Discretionary": { color: "#d97706" },
+      "Health Care": { color: "#dc2626" },
+      "Industrials": { color: "#0891b2" },
+      "Financials": { color: "#0369a1" },
+      "Energy + Utilities": { color: "#ea580c" },
+    };
+    const UNITS = 4111.03;
+    const DOTC = ["#2563eb", "#7c3aed", "#d97706", "#059669", "#dc2626", "#0891b2", "#ea580c",
+      "#0369a1", "#16a34a", "#9333ea", "#0284c7", "#b45309", "#be185d", "#15803d",
+      "#1d4ed8", "#c2410c", "#0e7490", "#6d28d9", "#047857", "#b91c1c", "#ca8a04", "#0f766e"];
+
+    const REFRESH_INTERVAL = 120;
+    let HOLD = [], CASH_BANK = 0, CASH_BROK = 0;
+    let prices = {}, hist = {}, portHist = [];
+    let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false;
+    let _posCache = null, _posCacheKey = "", _portHistDirty = true;
+    let weightingsData = [];
+    function toggleAllocView() {
+      allocView = allocView === 'stocks' ? 'sectors' : 'stocks';
+      renderDash(document.getElementById("content"));
+    }
+
+
+    const fU = n => "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fS = n => (n >= 0 ? "+ " : "− ") + fU(n);
+    const fP = n => (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+    const cl = n => n >= 0 ? "var(--green)" : "var(--red)";
+
+    async function fetchWithRetry(url, opts = {}, retries = 2) {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const r = await fetchWithTimeout(url, opts, 6000);
+          if (r.ok) return r;
+        } catch (e) { if (i === retries) throw e; }
+        await sleep(Math.pow(2, i) * 500);
+      }
+    }
+
+    async function loadData() {
+      try {
+        const [holdingsRes, cashRes, weightingsRes, unitvalueRes] = await Promise.all([
+          fetch('/api/holdings', { cache: 'no-store' }),
+          fetch('/api/cash', { cache: 'no-store' }),
+          fetch('/api/weightings', { cache: 'no-store' }),
+          fetch('/api/unitvalue', { cache: 'no-store' })
+        ]);
+        isOffline = false;
+        const holdingsData = await holdingsRes.json();
+        HOLD = Array.isArray(holdingsData) ? holdingsData : [];
+        const cash = await cashRes.json();
+        CASH_BANK = cash.bank || 0;
+        CASH_BROK = cash.brokerage || 0;
+        weightingsData = await weightingsRes.json();
+        if (!weightingsData || weightingsData.length === 0) weightingsData = [];
+        const uvData = await unitvalueRes.json();
+        if (Array.isArray(uvData) && uvData.length > 0) UNIT_HISTORY = uvData;
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        isOffline = true;
+        HOLD = [];
+        weightingsData = [];
+      }
+    }
+
+    async function saveUnitValue() {
+      try {
+        const r = await fetch('/api/unitvalue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(UNIT_HISTORY)
+        });
+        return r.ok;
+      } catch (error) {
+        console.error('Failed to save unit value:', error);
+        return false;
+      }
+    }
+
+    async function saveHoldings() {
+      try {
+        await fetch('/api/holdings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(HOLD)
+        });
+      } catch (error) {
+        console.error('Failed to save holdings:', error);
+      }
+    }
+
+    async function saveCash() {
+      try {
+        const r = await fetch('/api/cash', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bank: CASH_BANK, brokerage: CASH_BROK })
+        });
+        return r.ok;
+      } catch (error) {
+        console.error('Failed to save cash:', error);
+        return false;
+      }
+    }
+
+    const fK = v => `$${(v / 1000).toFixed(1)}k`;
+    const hexRgb = h => {
+      const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+      return r ? `${parseInt(r[1], 16)},${parseInt(r[2], 16)},${parseInt(r[3], 16)}` : "100,100,100";
+    };
+
+    function openKeyModal() {
+      const k = prompt("Enter a backup Finnhub API key (optional):");
+      if (k && k.trim()) { API_KEY = k.trim(); localStorage.setItem("llf_key", API_KEY); location.reload(); }
+    }
+
+    let gc = 0;
+    const pendingCharts = new Map();
+
+    function drawChart(el, labels, data, color, height, opts = {}) {
+      if (!el || !data || !data.length) return;
+      requestAnimationFrame(() => {
+        const W = el.getBoundingClientRect().width;
+        if (W > 20) {
+          _renderChart(el, labels, data, color, height, opts, W);
+        } else {
+          const key = el.id || ('c' + (gc++));
+          if (!el.id) el.id = key;
+          if (pendingCharts.has(key)) return;
+          pendingCharts.set(key, { el, labels, data, color, height, opts });
+          const ro = new ResizeObserver(entries => {
+            for (const entry of entries) {
+              const w = entry.contentRect.width;
+              if (w > 20) {
+                ro.disconnect();
+                const p = pendingCharts.get(key);
+                pendingCharts.delete(key);
+                if (p) _renderChart(p.el, p.labels, p.data, p.color, p.height, p.opts, w);
+              }
+            }
+          });
+          ro.observe(el);
+          setTimeout(() => {
+            const W2 = el.getBoundingClientRect().width;
+            if (W2 > 20 && pendingCharts.has(key)) { pendingCharts.delete(key); _renderChart(el, labels, data, color, height, opts, W2); }
+          }, 300);
+        }
+      });
+    }
+
+    function _renderChart(el, labels, data, color, height, { dots = true, tight = false, yFmt = null, timeframe = "" } = {}, W) {
+      const H = height, PL = 48, PR = 8, PT = 10, PB = tight ? 20 : 28, CW = W - PL - PR, CH = H - PT - PB;
+      const mn = Math.min(...data), mx = Math.max(...data);
+      const rng = mx - mn || Math.abs(mn) * 0.02 || 1;
+      const pd = tight ? rng * 0.05 : rng * 0.1;
+      const yLo = mn - pd, yHi = mx + pd, yRng = yHi - yLo;
+      const xp = i => PL + (i / Math.max(data.length - 1, 1)) * CW;
+      const yp = v => PT + CH * (1 - (v - yLo) / yRng);
+      const pts = data.map((v, i) => ({ x: xp(i), y: yp(v), v, l: labels[i] || "" }));
+      const id = "g" + (gc++), rgb = hexRgb(color);
+      const line = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" L ");
+      const area = `M ${pts[0].x.toFixed(1)},${H} L ${line} L ${pts[pts.length - 1].x.toFixed(1)},${H} Z`;
+      let grid = "", ylbls = "";
+      const yTicks = tight ? 2 : 4;
+      for (let i = 0; i <= yTicks; i++) {
+        const v = yLo + yRng * i / yTicks, y = yp(v).toFixed(1);
+        grid += `<line x1="${PL}" y1="${y}" x2="${PL + CW}" y2="${y}" stroke="rgba(26,40,64,0.08)" stroke-width="1"/>`;
+        if (!tight || i === 0 || i === yTicks)
+          ylbls += `<text x="${PL - 5}" y="${(+y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="#8090b8" font-family="DM Sans,sans-serif">${yFmt ? yFmt(v) : fU(v)}</text>`;
+      }
+
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      function fmtLabel(dateStr, prev, isTight) {
+        if (!dateStr) return "";
+        const [y, m, d] = dateStr.split("-").map(Number);
+        if (isTight) return MONTHS[m - 1] + " " + d;
+        const prevY = prev ? +prev.split("-")[0] : null;
+        const prevM = prev ? +prev.split("-")[1] : null;
+        if (!prev || prevY !== y) return MONTHS[m - 1] + " '" + String(y).slice(2);
+        if (prevM !== m) return MONTHS[m - 1];
+        return MONTHS[m - 1];
+      }
+
+      let xlbls = "";
+      const yBase = (PT + CH + 13).toFixed(1);
+      if (tight) {
+        const picks = [0, Math.floor((data.length - 1) / 2), data.length - 1];
+        picks.forEach(i => {
+          if (labels[i]) {
+            const [, m, d] = labels[i].split("-").map(Number);
+            const lbl = MONTHS[m - 1] + " " + d;
+            xlbls += `<text x="${xp(i).toFixed(1)}" y="${yBase}" text-anchor="${i === 0 ? "start" : i === picks[picks.length - 1] ? "end" : "middle"}" font-size="8" fill="#8090b8" font-family="DM Sans,sans-serif">${lbl}</text>`;
+          }
+        });
+      } else {
+        const minGapPx = 70;
+        let lastX = -999, lastDateStr = null;
+        const candidates = [];
+        for (let i = 0; i < data.length; i++) {
+          const d = labels[i]; if (!d) continue;
+          const m = +d.split("-")[1];
+          const prev = i > 0 ? labels[i - 1] : null;
+          const pm = prev ? +prev.split("-")[1] : null;
+          if (i === 0 || i === data.length - 1 || m !== pm) candidates.push(i);
+        }
+        const maxLabels = Math.floor(CW / minGapPx);
+        const step = Math.ceil((candidates.length - 2) / Math.max(maxLabels - 2, 1));
+        const filteredCandidates = candidates.filter((idx, ci) => ci === 0 || ci === candidates.length - 1 || (step <= 1 ? true : ci % step === 0));
+        filteredCandidates.forEach(i => {
+          const x = xp(i);
+          if (x - lastX < minGapPx && i !== 0 && i !== data.length - 1) return;
+          const lbl = fmtLabel(labels[i], lastDateStr, false);
+          const anchor = i === 0 ? "start" : i === data.length - 1 ? "end" : "middle";
+          xlbls += `<text x="${x.toFixed(1)}" y="${yBase}" text-anchor="${anchor}" font-size="9" fill="#8090b8" font-family="DM Sans,sans-serif" font-weight="${i === 0 || i === data.length - 1 ? "600" : "400"}">${lbl}</text>`;
+          lastX = x; lastDateStr = labels[i];
+        });
+      }
+
+      const tfBadge = timeframe ? `<text x="${(PL + CW).toFixed(1)}" y="${PT + 1}" text-anchor="end" font-size="9" fill="${color}" font-family="DM Sans,sans-serif" font-weight="600" opacity="0.7">${timeframe}</text>` : "";
+
+      let dotsSvg = "";
+      if (dots) pts.forEach(p => { dotsSvg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="${color}" stroke="white" stroke-width="1.5"/>`; });
+      const chartId = "ch" + (gc++);
+      let hovers = "";
+      const totalLen = pts.reduce((acc, p, i) => i === 0 ? 0 : acc + Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y), 0);
+      pts.forEach((p, i) => {
+        const x0 = (i === 0 ? PL : (pts[i - 1].x + p.x) / 2).toFixed(1);
+        const x1 = (i === pts.length - 1 ? PL + CW : (p.x + pts[i + 1].x) / 2).toFixed(1);
+        const val = yFmt ? yFmt(p.v) : fU(p.v);
+        const [y, m, d] = p.l ? p.l.split("-").map(Number) : [0, 0, 0];
+        const dateLbl = p.l ? `${MONTHS[m - 1]} ${d}, ${y}` : "";
+        const tip = encodeURIComponent(`${dateLbl}  ${val}`);
+        hovers += `<rect x="${x0}" y="${PT}" width="${(+x1 - +x0).toFixed(1)}" height="${CH}" fill="transparent" style="cursor:crosshair"
+      onmouseover="showTip(event,'${tip}');showCursorDot('${chartId}',${p.x.toFixed(1)},${p.y.toFixed(1)},'${color}')"
+      onmouseleave="hideTip();hideCursorDot('${chartId}')"/>`;
+      });
+      el.innerHTML = `<svg id="${chartId}" width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
+    <defs>
+      <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgb(${rgb})" stop-opacity="0.22"/>
+        <stop offset="100%" stop-color="rgb(${rgb})" stop-opacity="0.01"/>
+      </linearGradient>
+    </defs>
+    ${grid}
+    <path d="${area}" fill="url(#${id})" style="animation:fadeIn .6s ease both"/>
+    <path d="M ${line}" stroke="${color}" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"
+      stroke-dasharray="${totalLen.toFixed(0)}" stroke-dashoffset="${totalLen.toFixed(0)}"
+      style="animation:drawLine .8s ease forwards"/>
+    ${dotsSvg}
+    <line id="${chartId}-vl" x1="0" y1="${PT}" x2="0" y2="${PT + CH}" stroke="${color}" stroke-width="1" stroke-dasharray="3,3" opacity="0" pointer-events="none"/>
+    <circle id="${chartId}-cd" cx="0" cy="0" r="5" fill="${color}" stroke="white" stroke-width="2.5" opacity="0" pointer-events="none"/>
+    ${hovers}${ylbls}${xlbls}${tfBadge}
+  </svg>`;
+    }
+
+    function drawDonut(elId, slices) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      const S = 220, cx = S / 2, cy = S / 2, R = 90, r = 50;
+      const total = slices.reduce((s, d) => s + d.value, 0);
+      let angle = -Math.PI / 2, paths = "";
+      slices.forEach((d, i) => {
+        const sweep = (d.value / total) * 2 * Math.PI;
+        const tip = encodeURIComponent(`${d.name}: ${d.value}%`);
+        if (sweep >= 2 * Math.PI - 0.001) {
+          const fullR = `M ${cx},${cy - R} A ${R},${R} 0 1,1 ${cx},${cy + R} A ${R},${R} 0 1,1 ${cx},${cy - R} M ${cx},${cy - r} A ${r},${r} 0 1,0 ${cx},${cy + r} A ${r},${r} 0 1,0 ${cx},${cy - r} Z`;
+          paths += `<path d="${fullR}" fill="${d.color}" stroke="white" stroke-width="2" style="cursor:default;transition:opacity .15s;animation:fadeIn 0.5s ease both;animation-delay:${i * 0.05}s" onmouseover="this.style.opacity='.72';showTip(event,'${tip}')" onmouseleave="this.style.opacity='1';hideTip()"/>`;
+        } else {
+          const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
+          const x2 = cx + R * Math.cos(angle + sweep), y2 = cy + R * Math.sin(angle + sweep);
+          const x3 = cx + r * Math.cos(angle + sweep), y3 = cy + r * Math.sin(angle + sweep);
+          const x4 = cx + r * Math.cos(angle), y4 = cy + r * Math.sin(angle);
+          const lg = sweep > Math.PI ? 1 : 0;
+          paths += `<path d="M ${x1.toFixed(2)},${y1.toFixed(2)} A ${R},${R} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)} L ${x3.toFixed(2)},${y3.toFixed(2)} A ${r},${r} 0 ${lg},0 ${x4.toFixed(2)},${y4.toFixed(2)} Z"
+      fill="${d.color}" stroke="white" stroke-width="2" style="cursor:default;transition:opacity .15s;animation:fadeIn 0.5s ease both;animation-delay:${i * 0.05}s"
+      onmouseover="this.style.opacity='.72';showTip(event,'${tip}')" onmouseleave="this.style.opacity='1';hideTip()"/>`;
+        }
+        angle += sweep + 0.01;
+      });
+      el.innerHTML = `<svg width="${S}" height="${S}" style="display:block;margin:0 auto;animation:scaleIn .4s ease both">${paths}</svg>`;
+    }
+
+    function showTip(e, tip) {
+      const t = document.getElementById("gtt");
+      if (!t) return;
+      t.textContent = decodeURIComponent(tip);
+      t.style.display = "block";
+      requestAnimationFrame(() => t.classList.add("visible"));
+      moveTip(e);
+    }
+    function moveTip(e) {
+      const t = document.getElementById("gtt");
+      if (!t || t.style.display === "none") return;
+      const tw = t.offsetWidth, th = t.offsetHeight, m = 12;
+      let x = e.clientX - tw / 2;
+      let y = e.clientY - th - m;
+      if (x < m) x = m;
+      if (x + tw > window.innerWidth - m) x = window.innerWidth - tw - m;
+      if (y < m) y = e.clientY + m;
+      t.style.left = x + "px";
+      t.style.top = y + "px";
+    }
+    function hideTip() {
+      const t = document.getElementById("gtt");
+      if (!t) return;
+      t.classList.remove("visible");
+      setTimeout(() => { if (!t.classList.contains("visible")) t.style.display = "none"; }, 120);
+    }
+    document.addEventListener("mousemove", moveTip);
+    function showCursorDot(chartId, cx, cy, color) {
+      const vl = document.getElementById(chartId + "-vl"), cd = document.getElementById(chartId + "-cd");
+      if (vl) { vl.setAttribute("x1", cx); vl.setAttribute("x2", cx); vl.setAttribute("opacity", "0.4"); }
+      if (cd) { cd.setAttribute("cx", cx); cd.setAttribute("cy", cy); cd.setAttribute("fill", color); cd.setAttribute("opacity", "1"); }
+    }
+    function hideCursorDot(chartId) {
+      const vl = document.getElementById(chartId + "-vl"), cd = document.getElementById(chartId + "-cd");
+      if (vl) vl.setAttribute("opacity", "0");
+      if (cd) cd.setAttribute("opacity", "0");
+    }
+
+    function setProg(pct, msg, det = "") {
+      const f = document.getElementById("lf"), m = document.getElementById("lm"), d = document.getElementById("ld");
+      if (f && pct !== null) f.style.width = pct + "%";
+      if (m && msg !== null) m.textContent = msg;
+      if (d) d.textContent = det;
+    }
+    function pauseProg(msg) {
+      const f = document.getElementById("lf"), m = document.getElementById("lm");
+      if (f) f.style.transition = "none"; 
+      if (m) m.textContent = msg;
+    }
+    function showLsErr(msg) {
+      const e = document.getElementById("ls-err");
+      if (e) { e.style.display = "block"; e.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><b>Error:</b> ${msg}`; }
+      const kb = document.getElementById("ls-kbtn");
+      if (kb) kb.style.display = "inline-block";
+    }
+
+    async function fetchWithTimeout(url, ms = 8000) {
+      return Promise.race([
+        fetch(url),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))
+      ]);
+    }
+
+    function parseStooq(text) {
+      try {
+        const lines = text.trim().split("\n");
+        if (lines.length < 2) return null;
+        const out = [];
+        for (let i = 1; i < lines.length; i++) {
+          const p = lines[i].split(",");
+          if (p.length < 5) continue;
+          const date = p[0].trim();
+          const close = parseFloat(p[4]);
+          if (!date || isNaN(close)) continue;
+          out.push({ date, close: +close.toFixed(4) });
+        }
+        return out.length > 5 ? out.sort((a, b) => a.date.localeCompare(b.date)) : null;
+      } catch (e) { return null; }
+    }
+
+    function parseYahoo(d) {
+      try {
+        const r = d.chart.result[0];
+        const ts = r.timestamp, closes = r.indicators.quote[0].close;
+        const out = [];
+        for (let i = 0; i < ts.length; i++) {
+          if (closes[i] == null) continue;
+          out.push({ date: new Date(ts[i] * 1000).toISOString().split("T")[0], close: +closes[i].toFixed(4) });
+        }
+        return out.length > 5 ? out : null;
+      } catch (e) { return null; }
+    }
+
+    async function tryProxy(proxyUrl, isAllOrigins = false, timeoutMs = 18000) {
+      const r = await Promise.race([
+        fetch(proxyUrl),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs))
+      ]);
+      if (!r.ok) throw new Error("http " + r.status);
+      let raw = await r.json();
+      if (isAllOrigins) {
+        if (typeof raw.contents === "string") raw = JSON.parse(raw.contents);
+        else if (raw.contents && typeof raw.contents === "object") raw = raw.contents;
+      }
+      const parsed = parseYahoo(raw);
+      if (!parsed || parsed.length < 5) throw new Error("no data");
+      return parsed;
+    }
+
+
+    async function fetchHist(ticker) {
+      try {
+        const r = await fetch(`/api/hist?ticker=${ticker}`);
+        const data = await r.json();
+        return Array.isArray(data) && data.length > 5 ? data : null;
+      } catch (e) {
+        console.error("Fetch error:", e);
+        return null;
+      }
+    }
+
+    async function parallelLimit(tasks, limit) {
+      const results = new Array(tasks.length);
+      let idx = 0;
+      async function worker() {
+        while (idx < tasks.length) {
+          const i = idx++;
+          results[i] = await tasks[i]();
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+      return results;
+    }
+
+    let loadedTickers = [], failedTickers = [];
+    function addTickerStatus(ticker, ok) {
+      if (ok) loadedTickers.push(ticker); else failedTickers.push(ticker);
+      const el = document.getElementById("ls-tickers");
+      if (!el) return;
+      const all = [...loadedTickers.map(t => `<span style="color:#059669;font-weight:600">${t}</span>`),
+      ...failedTickers.map(t => `<span style="color:#94a3b8;text-decoration:line-through">${t}</span>`)];
+      el.innerHTML = all.join("");
+    }
+
+    let _skipHistoryResolve = null;
+    function skipHistory() {
+      if (_skipHistoryResolve) { _skipHistoryResolve("skip"); _skipHistoryResolve = null; }
+      const sb = document.getElementById("ls-skip"); if (sb) sb.style.display = "none";
+    }
+
+    let tc = 120, timer = null;
+    function tick() {
+      tc--;
+      if (tc <= 0 && !isOffline) { tc = 120; loadAll(true).catch(() => { isOffline = true; tick(); }); }
+      const el = document.getElementById("next-update");
+      if (el) {
+        if (isOffline || !navigator.onLine) {
+          el.textContent = "Offline";
+          el.style.color = "var(--red)";
+        } else {
+          const m = Math.floor(tc / 60), s = tc % 60;
+          el.textContent = `Updating in ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+          el.style.color = "var(--green)";
+        }
+      }
+    }
+
+    async function loadAll(silent = false) {
+      if (!silent) {
+        const ls = document.getElementById("ls"), app = document.getElementById("app");
+        if (ls) ls.style.display = "flex";
+        if (app) app.style.display = "none";
+      }
+      loadedTickers = []; failedTickers = [];
+      if (!silent) setProg(0, "Fetching quotes…", "");
+
+      let qOk = 0;
+      const quoteTasks = HOLD.map((h, i) => async () => {
+        try {
+          const r = await fetchWithTimeout(`/api/quote?ticker=${h.t}`, 6000);
+          const d = await r.json();
+          if (d && d.c > 0) { prices[h.t] = { c: d.c, pc: d.pc || d.c * .999, hi: d.h, lo: d.l }; qOk++; invalidatePos(); }
+        } catch (e) { }
+        const done = Object.keys(prices).length;
+        if (!silent) setProg(Math.round(done / HOLD.length * 40), "Fetching quotes…", `${done}/${HOLD.length} prices loaded`);
+      });
+      await parallelLimit(quoteTasks, 4);
+
+      if (!silent) {
+        setProg(40, `Got ${qOk}/${HOLD.length} prices`, "Starting history load…");
+
+        const tickerBox = document.getElementById("ls-tickers");
+        if (tickerBox) tickerBox.style.display = "flex";
+      }
+
+      const skipTimer = setTimeout(() => {
+        const sb = document.getElementById("ls-skip"); if (sb) sb.style.display = "inline-block";
+        setProg(null, "History taking a while…", "Proxies can be slow — skip to load app now, or wait for charts.");
+      }, 8000);
+
+      const skipPromise = new Promise(res => { _skipHistoryResolve = res; });
+
+      
+      let histDone = 0, histAborted = false;
+      async function loadHistSeq() {
+        for (const h of HOLD) {
+          if (histAborted) break;
+          let got = false;
+
+          const s = await fetchHist(h.t);
+          if (s) { hist[h.t] = s; got = true; }
+
+          if (!got) {
+            const y = await fetchHist(h.t);
+            if (y) { hist[h.t] = y; got = true; }
+          }
+
+          if (!got) {
+            try {
+              const r = await fetchWithTimeout(`${FB}/stock/candle?symbol=${h.t}&resolution=D&count=365&token=${API_KEY}`, 5000);
+              const d = await r.json();
+              if (d && d.s === "ok" && d.t && d.t.length > 5) {
+                hist[h.t] = d.t.map((ts, j) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], close: d.c[j] }));
+                got = true;
+              }
+            } catch (e) { }
+          }
+
+          histDone++;
+          addTickerStatus(h.t, got);
+          if (!histAborted) setProg(40 + Math.round(histDone / HOLD.length * 58),
+            `History: ${histDone}/${HOLD.length}`,
+            `${loadedTickers.length} loaded · ${failedTickers.length} failed`);
+
+          if (!histAborted && histDone < HOLD.length) await sleep(200);
+        }
+      }
+
+      const winner = await Promise.race([loadHistSeq().then(() => "done"), skipPromise]);
+      histAborted = (winner === "skip");
+      clearTimeout(skipTimer);
+      const sb = document.getElementById("ls-skip"); if (sb) sb.style.display = "none";
+
+      await loadData();
+
+      if (!silent) {
+        const ls = document.getElementById("ls"), app = document.getElementById("app");
+        if (ls) ls.style.display = "none";
+        if (app) app.style.display = "block";
+      }
+      isOffline = false;
+      updateSummary(true);
+      render();
+      if (!timer) timer = setInterval(tick, 1000);
+    }
+
+
+    async function loadTicker(ticker) {
+      if (!ticker) return;
+      loadedTickers = []; failedTickers = [];
+      const ls = document.getElementById("ls");
+      const app = document.getElementById("app");
+      const tickerBox = document.getElementById("ls-tickers");
+      if (tickerBox) { tickerBox.style.display = "flex"; tickerBox.innerHTML = `<span style="color:#64748b;font-weight:600">${ticker}</span>`; }
+      if (ls) ls.style.display = "flex";
+      if (app) app.style.display = "none";
+
+      try {
+        setProg(10, `Fetching ${ticker}…`, `Starting live quote load`);
+        const quoteRes = await fetchWithRetry(`/api/quote?ticker=${ticker}`, {}, 2);
+        const quoteData = await quoteRes.json();
+        if (quoteData && quoteData.c > 0) {
+          prices[ticker] = { c: quoteData.c, pc: quoteData.pc || quoteData.c * .999, hi: quoteData.h, lo: quoteData.l };
+          setProg(35, `Price loaded for ${ticker}`, 'Fetching history...');
+        } else {
+          setProg(35, `Price unavailable for ${ticker}`, 'Fetching history anyway');
+        }
+
+        let history = await fetchHist(ticker);
+        if (!history) {
+          setProg(50, `History not found, trying fallback...`, `Trying a secondary data source`);
+          try {
+            const r = await fetchWithRetry(`${FB}/stock/candle?symbol=${ticker}&resolution=D&count=365&token=${API_KEY}`, {}, 1);
+            const d = await r.json();
+            if (d && d.s === "ok" && d.t && d.t.length > 5) {
+              history = d.t.map((ts, j) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], close: d.c[j] }));
+            }
+          } catch (e) { }
+        }
+        if (history) {
+          hist[ticker] = history;
+          addTickerStatus(ticker, true);
+          setProg(100, `Loaded ${ticker}`, 'Ready');
+        } else {
+          addTickerStatus(ticker, false);
+          setProg(100, `Failed loading ${ticker}`, 'Check ticker or API limits');
+        }
+      } catch (e) {
+        addTickerStatus(ticker, false);
+        setProg(null, `Error loading ${ticker}`, 'See console for details');
+        console.error(e);
+      } finally {
+        buildPortHist();
+        render();
+        if (ls) ls.style.display = "none";
+        if (app) app.style.display = "block";
+      }
+    }
+
+    function buildPortHist() {
+      if (!_portHistDirty) return;
+      const dm = {};
+      HOLD.forEach(({ t, sh }) => (hist[t] || []).forEach(({ date, close }) => { dm[date] = (dm[date] || 0) + close * sh; }));
+      portHist = Object.entries(dm).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, v: +value.toFixed(2), value: +value.toFixed(2) }));
+      _portHistDirty = false;
+    }
+
+    function _buildPos() {
+      return HOLD.map((h, i) => {
+        const q = prices[h.t] || { c: 0, pc: 0 };
+        const val = q.c * h.sh, cost = h.ac * h.sh, pnl = val - cost;
+        const colorIdx = h.t.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % DOTC.length;
+        return {
+          ...h, price: q.c, pc: q.pc, val, cost, pnl,
+          pnlP: cost ? (pnl / cost) * 100 : 0,
+          dayC: (q.pc && q.c) ? ((q.c - q.pc) / q.pc) * 100 : 0,
+          color: DOTC[colorIdx]
+        };
+      });
+    }
+    function invalidatePos() { _posCache = null; _portHistDirty = true; }
+    function getPos() {
+      const key = HOLD.map(h => h.t + h.sh + h.ac).join(',') + JSON.stringify(prices).length;
+      if (_posCache && key === _posCacheKey) return _posCache;
+      _posCacheKey = key; _posCache = _buildPos(); _portHistDirty = true;
+      return _posCache;
+    }
+    function getTot(pos) {
+      const eV = pos.reduce((s, p) => s + p.val, 0), tC = pos.reduce((s, p) => s + p.cost, 0);
+      return {
+        tV: eV + CASH_BANK + CASH_BROK, tC, tP: eV - tC, tPct: tC ? ((eV - tC) / tC) * 100 : 0,
+        dP: pos.reduce((s, p) => s + (p.price - p.pc) * p.sh, 0)
+      };
+    }
+    function updateSummary(shouldSave = false) {
+      const { tV, tC, tP, tPct, dP } = getTot(getPos());
+      const s = (id, t, c) => { const e = document.getElementById(id); if (e) { e.textContent = t; if (c) e.style.color = c; } };
+      s("sv", fU(tV)); s("sco", fU(tC));
+      s("sp", `${fS(tP)} (${fP(tPct)})`, cl(tP));
+      s("sd", fS(dP), cl(dP));
+      s("su", fU(tV / UNITS) + "/unit");
+      buildPortHist();
+
+      const summary = document.querySelector('.sg');
+      if (summary) summary.style.display = curTab === 'dashboard' ? 'grid' : 'none';
+
+      if (shouldSave) {
+        saveHoldings();
+        saveCash();
+      }
+    }
+
+    function setTab(t) {
+      curTab = t; if (t !== "performance") detailT = null;
+      document.querySelectorAll(".tab").forEach(el => {
+        const txt = el.textContent.toLowerCase().trim();
+        el.classList.toggle("active", txt.includes(t.slice(0, 4)));
+      });
+      requestAnimationFrame(() => {
+        const tabsBar = document.querySelector('.nav-bottom .tabs');
+        const activeTab = tabsBar && tabsBar.querySelector('.tab.active');
+        if (tabsBar && activeTab) {
+          const barRect = tabsBar.getBoundingClientRect();
+          const tabRect = activeTab.getBoundingClientRect();
+          const offset = activeTab.offsetLeft - tabsBar.offsetLeft;
+          const center = offset - (barRect.width / 2) + (tabRect.width / 2);
+          tabsBar.scrollTo({ left: center, behavior: 'smooth' });
+        }
+      });
+      render();
+    }
+    function render() {
+      updateSummary();
+      if (curTab === "weightings") valWeightings();
+     
+      renderLockOverlay();
+      renderDeleteModal();
+      renderUVDeleteModal();
+      const el = document.getElementById("content");
+      if (!el) return;
+      void el.offsetWidth; el.className = "fin";
+      if (curTab === "dashboard") renderDash(el);
+      else if (curTab === "weightings") renderWeightings(el);
+      else if (curTab === "sectors") renderSectors(el);
+      else if (curTab === "performance") renderPerf(el);
+      else if (curTab === "unitvalue") renderUnitValue(el);
+      else renderHold(el);
+    }
+
+    function renderDash(el) {
+      const pos = getPos(), tV = pos.reduce((s, p) => s + p.val, 0);
+      let alloc = [];
+      if (allocView === 'stocks') {
+        alloc = pos.filter(p => p.val > 0).map(p => ({ name: p.t, value: +((p.val / tV) * 100).toFixed(2), color: p.color })).sort((a, b) => b.value - a.value);
+      } else {
+        const secObj = {};
+        pos.filter(p => p.val > 0).forEach(p => { secObj[p.s] = (secObj[p.s] || 0) + p.val; });
+        alloc = Object.entries(secObj).map(([s, v]) => ({ name: Math.abs(v / tV * 100) < 10 ? s.split(" ")[0] : s, value: +((v / tV) * 100).toFixed(2), color: (SM[s] || { color: "#888" }).color })).sort((a, b) => b.value - a.value);
+      }
+      el.innerHTML = `<div class="dg">
+    <div class="panel">
+      <div class="ph" style="display:flex;justify-content:space-between;padding-right:10px">
+        <span><i class="fa-solid fa-table-list"></i>&nbsp;Detailed Positions Breakdown</span>
+        <div style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0">Grouped by Sector</div>
+      </div>
+      <div class="scroll-x" style="overflow-x:auto"><table>
+        <thead>
+          <tr>
+            <th style="text-align:left" onmouseover="showTip(event,'Ticker Symbol')" onmouseleave="hideTip()">Stock</th>
+            <th onmouseover="showTip(event,'Date of first acquisition')" onmouseleave="hideTip()">Purchase Date</th>
+            <th onmouseover="showTip(event,'Total shares held')" onmouseleave="hideTip()">Shares</th>
+            <th onmouseover="showTip(event,'Average price paid per share')" onmouseleave="hideTip()">Avg Cost</th>
+            <th onmouseover="showTip(event,'Current live market price')" onmouseleave="hideTip()">Mkt Price</th>
+            <th onmouseover="showTip(event,'Price %C3%97 Shares')" onmouseleave="hideTip()">Mkt Value</th>
+            <th onmouseover="showTip(event,'Market Value - Cost Basis')" onmouseleave="hideTip()">Gain/Loss</th>
+            <th onmouseover="showTip(event,'Percent of total portfolio value (including cash)')" onmouseleave="hideTip()">Weight</th>
+            <th onmouseover="showTip(event,'Compounded Annual Growth Rate since purchase')" onmouseleave="hideTip()">Annual %</th>
+            <th onmouseover="showTip(event,'Trailing Twelve Month performance (Price %25 change over last 365 days)')" onmouseleave="hideTip()">TTM %</th>
+          </tr>
+        </thead>
+        <tbody id="ptb"></tbody>
+      </table></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--card);border-radius:14px;box-shadow:var(--sh);padding:18px 20px;animation:slideUp .3s .2s ease both">
+        <div class="sl" style="margin-bottom:12px"><i class="fa-solid fa-building-columns"></i>&nbsp;Overview</div>
+        ${[["Units", UNITS.toLocaleString()], ["Bank", CASH_BANK], ["Brokerage", CASH_BROK], ["Total", CASH_BANK + CASH_BROK]].map((r, i) =>
+        `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;${i === 3 ? "border-top:1px solid var(--border);margin-top:5px;font-weight:700" : ""}">
+          <span style="color:var(--muted)">${r[0]}</span><span>${i === 0 ? r[1] : fU(r[1])}</span></div>`).join("")}
+      </div>
+      <div class="apanel">
+        <div class="sl" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+          <span><i class="fa-solid fa-chart-pie"></i>&nbsp;Allocation</span>
+          <button onclick="toggleAllocView()" style="background:var(--dim);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'"><i class="fa-solid fa-right-left"></i> Switch View</button>
+        </div>
+        <div id="donut-wrap"></div>
+        <div class="alist" id="alist"></div>
+      </div>
+    </div>
+  </div>`;
+      updateTable(pos);
+      drawDonut("donut-wrap", alloc);
+      document.getElementById("alist").innerHTML = alloc.map(d =>
+        `<div class="arow"><div class="aname"><div class="d9" style="background:${d.color}"></div>${d.name}</div>
+    <span style="font-weight:600">${d.value}%</span></div>`).join("");
+    }
+    function updateTable(pos) {
+      const tb = document.getElementById("ptb"); if (!tb) return;
+      const pList = pos || getPos();
+      const { tV } = getTot(pList);
+
+      const sectors = [...new Set(pList.map(p => p.s))].sort();
+      let html = "";
+
+      sectors.forEach(sName => {
+        const sPositions = pList.filter(p => p.s === sName);
+        const sVal = sPositions.reduce((sum, p) => sum + p.val, 0);
+        const sCost = sPositions.reduce((sum, p) => sum + p.cost, 0);
+        const sGain = sVal - sCost;
+        const sGainP = sCost ? (sGain / sCost * 100) : 0;
+
+        html += `<tr style="background:rgba(45,74,62,0.12);pointer-events:none;border-top:1px solid var(--accent);border-bottom:2px solid var(--accent)">
+      <td colspan="5" style="font-weight:800;color:var(--accent);font-size:11px;padding:12px 15px;text-align:left;letter-spacing:0.8px">${sName.toUpperCase()}</td>
+      <td style="font-weight:700;color:var(--accent);font-size:12px">${fU(sVal)}</td>
+      <td style="font-weight:700;color:${cl(sGain)};font-size:12px">${fS(sGain)} (${fP(sGainP)})</td>
+      <td style="font-weight:700;color:var(--accent);font-size:12px">${+((sVal / tV) * 100).toFixed(2)}%</td>
+      <td colspan="2"></td>
+    </tr>`;
+
+        sPositions.forEach(p => {
+          const weight = tV > 0 ? (p.val / tV * 100) : 0;
+          const buyDate = p.d || null;
+          const days = buyDate ? (new Date() - new Date(buyDate)) / 86400000 : 0;
+          const annual = (buyDate && days > 0) ? (((p.val / p.cost) ** (365 / days)) - 1) * 100 : null;
+
+          let ttm = 0;
+          const h = hist[p.t] || [];
+          if (h.length > 5) {
+            const old = h.find(x => {
+              const d = new Date(x.date);
+              const diff = (new Date() - d) / 86400000;
+              return diff >= 364 && diff <= 370;
+            }) || h[0];
+            if (old && old.close > 0) ttm = ((p.price - old.close) / old.close) * 100;
+          }
+
+          html += `<tr onclick="openDetail('${p.t}')">
+        <td><div class="tcell"><div class="d9" style="background:${p.color}"></div>
+          <div><div class="tn">${p.t}</div><div class="tsub">${p.n}</div></div></div></td>
+        <td style="color:var(--muted);font-size:11px;text-align:right">${buyDate || "—"}</td>
+        <td style="color:var(--muted)">${p.sh}</td>
+        <td style="color:var(--muted)">${fU(p.ac)}</td>
+        <td style="font-weight:600">${p.price > 0 ? fU(p.price) : "—"}</td>
+        <td style="font-weight:700">${p.price > 0 ? fU(p.val) : "—"}</td>
+        <td style="color:${cl(p.pnl)};font-weight:600">${p.price > 0 ? fS(p.pnl) : "(" + fP(p.pnlP) + ")"}</td>
+        <td style="color:var(--muted)">${weight.toFixed(2)}%</td>
+        <td style="color:${annual === null ? "var(--muted)" : cl(annual)};font-weight:600">${p.price > 0 && annual !== null ? fP(annual) : "—"}</td>
+        <td style="color:${cl(ttm)};font-weight:600">${ttm !== 0 ? fP(ttm) : "—"}</td>
+      </tr>`;
+        });
+      });
+
+      tb.innerHTML = html;
+    }
+
+    function renderWeightings(el) {
+      const pos = getPos();
+      const equityTotal = pos.reduce((sum, p) => sum + (p.val || 0), 0) || 1;
+      const curSectors = {};
+
+      pos.forEach(p => {
+        const s = (p.s || "Other").trim();
+        curSectors[s] = (curSectors[s] || 0) + (p.val || 0);
+      });
+
+      weightingsData.forEach(w => {
+        const sectorName = (w.s || "").trim();
+        const sectorValue = curSectors[sectorName] || 0;
+        w.c = +((sectorValue / equityTotal) * 100).toFixed(2);
+      });
+
+      el.innerHTML = `<div class="dg" style="grid-template-columns: 1.3fr 1fr">
+    <div class="panel">
+      <div class="ph" style="display:flex;justify-content:space-between;align-items:center">
+        <span><i class="fa-solid fa-scale-balanced"></i>&nbsp;Allocation Strategy</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="fcb" style="height:30px;padding:0 14px;font-size:11px;width:auto;white-space:nowrap;margin:0" onclick="addWeightingRow()"><i class="fa-solid fa-plus"></i>&nbsp;Add Sector</button>
+          <button class="fb" onclick="saveWeightingsUI()" style="height:30px;padding:0 14px;width:auto;white-space:nowrap;font-size:11px"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+        </div>
+      </div>
+      <div class="scroll-x" style="overflow-x:auto"><table>
+        <thead><tr><th style="text-align:left">Sector</th><th>Current %</th><th style="width:110px">Proposed %</th><th style="width:110px">S&P 500 %</th><th>Over/Under</th><th style="width:40px"></th></tr></thead>
+        <tbody>${weightingsData.length === 0 ? `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">No sectors defined. Click "Add Sector" to begin.</td></tr>` : weightingsData.map((w, i) => `
+          <tr>
+            <td style="font-weight:600">
+              <div class="cd-trigger" style="min-width:unset; background:rgba(0,0,0,0.02); height:28px" onclick="event.stopPropagation(); openCD(this, Object.keys(SM), (val)=>{weightingsData[${i}].s=val; render();}, weightingsData.filter((_,j)=>j!==${i}).map(w=>w.s))">
+                <span>${w.s}</span>
+                <i class="fa-solid fa-chevron-down" style="font-size:10px; color:var(--muted)"></i>
+              </div>
+            </td>
+            <td>${w.c}%</td>
+            <td><input type="number" step="0.01" class="fi" style="width:100%;text-align:center;padding:6px" value="${w.p}" onchange="updateWeight(${i},'p',this.value)"/></td>
+            <td><input type="number" step="0.01" class="fi" style="width:100%;text-align:center;padding:6px" value="${w.sp}" onchange="updateWeight(${i},'sp',this.value)"/></td>
+            <td style="color:${cl(w.p - w.sp)};font-weight:600">${fP(w.p - w.sp)}</td>
+            <td style="text-align:center"><button class="rmbtn" onclick="showWeightDeleteConfirm(${i})"><i class="fa-solid fa-xmark"></i></button></td>
+          </tr>`).join("")}</tbody>
+      </table></div>
+    </div>
+    <div class="apanel">
+      <div class="sl" style="margin-bottom:14px"><i class="fa-regular fa-chart-bar"></i> Benchmark Comparison</div>
+      <div id="w-chart-wrap" style="margin-top:12px"></div>
+    </div>
+  </div>
+  
+  <div class="panel" style="margin-top:16px; overflow:hidden">
+    <div class="ph"><i class="fa-solid fa-chart-pie"></i>&nbsp;Allocation Comparison (Proposed vs. Current LLF)</div>
+    <div class="alloc-compare-grid" style="display:grid; grid-template-columns: 1fr 1fr">
+      <div style="padding:20px; border-right:1px solid var(--border)">
+        <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:16px; color:var(--accent); margin-bottom:16px; text-align:center">Proposed Strategy</div>
+        <div style="display:flex; align-items:center; gap:20px">
+          <div id="donut-proposed" style="flex-shrink:0"></div>
+          <div id="legend-proposed" style="flex:1; display:flex; flex-direction:column; gap:7px"></div>
+        </div>
+      </div>
+      <div style="padding:20px">
+        <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:16px; color:var(--accent); margin-bottom:16px; text-align:center">Current LLF</div>
+        <div style="display:flex; align-items:center; gap:20px">
+          <div id="donut-actual" style="flex-shrink:0"></div>
+          <div id="legend-actual" style="flex:1; display:flex; flex-direction:column; gap:7px"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+      setTimeout(() => {
+        const targetSlices = weightingsData.map(w => ({ name: w.s, value: w.p, color: (SM[w.s] || { color: "#888" }).color })).filter(s => s.value > 0);
+        const actualSlices = weightingsData.map(w => ({ name: w.s, value: w.c, color: (SM[w.s] || { color: "#888" }).color })).filter(s => s.value > 0);
+
+        drawDonut("donut-proposed", targetSlices);
+        drawDonut("donut-actual", actualSlices);
+
+        const fmtLeg = (slices, id) => {
+          const leg = document.getElementById(id);
+          if (leg) leg.innerHTML = slices.map(s => `
+            <div style="display:flex; align-items:center; gap:9px; padding:7px 10px; background:var(--dim); border-radius:7px; border:1px solid var(--border)">
+              <div style="width:9px; height:9px; border-radius:2px; background:${s.color}; flex-shrink:0"></div>
+              <span style="flex:1; font-size:11px; font-weight:500; color:var(--text)">${s.name}</span>
+              <span style="font-size:12px; font-weight:700; color:var(--accent)">${s.value}%</span>
+            </div>
+          `).join("");
+        };
+        fmtLeg(targetSlices, "legend-proposed");
+        fmtLeg(actualSlices, "legend-actual");
+      }, 100);
+
+      drawWeightChart("w-chart-wrap");
+    }
+
+    function updateWeight(i, f, v) { weightingsData[i][f] = +parseFloat(v).toFixed(2) || 0; render(); }
+    function addWeightingRow() { weightingsData.push({ s: "New Sector", c: 0, p: 0, sp: 0 }); render(); }
+    function rmvWeighting(i) { weightingsData.splice(i, 1); deletingWeightIdx = null; render(); }
+    function showWeightDeleteConfirm(i) { deletingWeightIdx = i; renderWeightDeleteModal(); }
+    function cancelWeightRmv() { deletingWeightIdx = null; renderWeightDeleteModal(); }
+    function confirmWeightRmv() { if (deletingWeightIdx !== null) rmvWeighting(deletingWeightIdx); }
+
+    function renderWeightDeleteModal() {
+      let delEl = document.getElementById("weight-delete-modal");
+      if (!delEl) {
+        delEl = document.createElement("div");
+        delEl.id = "weight-delete-modal";
+        document.body.appendChild(delEl);
+      }
+      if (deletingWeightIdx !== null && weightingsData[deletingWeightIdx]) {
+        const s = weightingsData[deletingWeightIdx].s;
+        delEl.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(45, 74, 62, 0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:500; animation: fadeIn .3s ease"></div>
+      <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:501;">
+        <div style="background:var(--card); padding:32px; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,0.4); text-align:center; width:340px; animation: scaleIn .3s ease both;">
+          <div style="width:64px; height:64px; background:#fef2f2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+            <i class="fa-solid fa-trash-can" style="font-size:24px; color:var(--red);"></i>
+          </div>
+          <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:24px; color:var(--accent); margin-bottom:8px;">Are you sure?</div>
+          <div style="font-size:14px; color:var(--muted); margin-bottom:28px; line-height:1.5">You are about to remove <b>${s}</b> from your allocation strategy. This action cannot be undone.</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="fcb" onclick="cancelWeightRmv()" style="margin:0; padding:0; height:44px;">Cancel</button>
+            <button class="fb" onclick="confirmWeightRmv()" style="background:var(--red); border-color:var(--red); margin:0; padding:0; height:44px;"><i class="fa-solid fa-trash-can"></i> Remove</button>
+          </div>
+        </div>
+      </div>`;
+      } else {
+        delEl.innerHTML = "";
+      }
+    }
+
+    function valWeightings() {
+      const btn = document.querySelector('button[onclick="saveWeightingsUI()"]');
+      if (!btn) return;
+      const isInvalid = weightingsData.length === 0 || weightingsData.some(w => isNaN(w.p) || isNaN(w.sp) || w.s === "New Sector" || w.s === "");
+      btn.disabled = isInvalid;
+    }
+
+    function saveBtnFeedback(btn, success) {
+      if (!btn) return;
+      const oldText = btn._savedOldText || btn.innerHTML;
+      if (success) {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved';
+        btn.style.background = 'var(--green)';
+      } else {
+        btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Failed';
+        btn.style.background = 'var(--red)';
+      }
+      setTimeout(() => { btn.innerHTML = oldText; btn.style.background = ''; btn.disabled = false; }, 2000);
+    }
+
+    async function saveWeightingsUI() {
+      const btn = document.querySelector('button[onclick="saveWeightingsUI()"]');
+      if (!btn) return;
+      btn._savedOldText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+      btn.disabled = true;
+      const success = await saveWeightings();
+      saveBtnFeedback(btn, success);
+    }
+
+    async function saveWeightings() {
+      try {
+        const r = await fetch('/api/weightings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(weightingsData)
+        });
+        return r.ok;
+      } catch (e) { return false; }
+    }
+
+    function drawWeightChart(id) {
+      const el = document.getElementById(id); if (!el) return;
+      requestAnimationFrame(() => {
+        const n = weightingsData.length || 1;
+        const rowH = 44, PL = 130, PR = 20, PT = 12, PB = 36;
+        const H = n * rowH + PT + PB;
+        const W = el.getBoundingClientRect().width;
+        const CW = W - PL - PR, CH = H - PT - PB;
+        const mx = Math.max(...weightingsData.map(w => Math.max(w.c, w.p, w.sp))) * 1.1;
+        let svg = `<svg width="${W}" height="${H}" style="font-family:DM Sans,sans-serif">`;
+        const bH = rowH;
+        weightingsData.forEach((w, i) => {
+          const y = PT + i * bH;
+          const getW = v => (v / mx) * CW;
+          const cW = getW(w.c), pW = getW(w.p), spW = getW(w.sp);
+          const barH = 7;
+          const rowMid = y + bH / 2;
+          const startY = rowMid - barH * 1.5 - 2;
+          if (i > 0) svg += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="var(--border)" stroke-width="0.5" opacity="0.5"/>`;
+          svg += `<text x="${PL - 10}" y="${rowMid + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${w.s.split(" ")[0]}</text>`;
+          svg += `<rect x="${PL}" y="${startY}" width="${cW}" height="${barH}" rx="3" fill="var(--accent)" opacity="0.85"/>`;
+          svg += `<rect x="${PL}" y="${startY + barH + 3}" width="${pW}" height="${barH}" rx="3" fill="var(--yellow)"/>`;
+          svg += `<rect x="${PL}" y="${startY + (barH + 3) * 2}" width="${spW}" height="${barH}" rx="3" fill="#94a3b8"/>`;
+        });
+        svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + CH}" stroke="var(--border)" stroke-width="1"/>`;
+        svg += `<g transform="translate(${PL},${H - PB + 18})">
+      <circle cx="0" cy="0" r="4" fill="var(--accent)"/> <text x="10" y="4" font-size="10" fill="var(--muted)">Current</text>
+      <circle cx="72" cy="0" r="4" fill="var(--yellow)"/> <text x="82" y="4" font-size="10" fill="var(--muted)">Proposed</text>
+      <circle cx="152" cy="0" r="4" fill="#94a3b8"/> <text x="162" y="4" font-size="10" fill="var(--muted)">S&P 500</text>
+    </g></svg>`;
+        el.innerHTML = svg;
+      });
+    }
+
+    function getStkMonth(t, sh) {
+      const pts = (hist[t] || []).slice(-22);
+      return { labels: pts.map(d => d.date), data: pts.map(d => +(d.close * sh).toFixed(2)) };
+    }
+    function renderSectors(el) {
+      const pos = getPos(), sectors = Object.keys(SM);
+      el.innerHTML = `<div class="sec-stack">` + sectors.map((sector, si) => {
+        const meta = SM[sector], sp = pos.filter(p => p.s === sector);
+        const val = sp.reduce((s, p) => s + p.val, 0), cost = sp.reduce((s, p) => s + p.cost, 0);
+        const pnl = val - cost, pnlP = cost ? (pnl / cost) * 100 : 0;
+        return `<div class="sec-card" style="animation-delay:${si * .06}s">
+      <div class="sec-hdr">
+        <div class="sec-name"><div class="sec-dot" style="background:${meta.color}"></div>${sector}</div>
+          <div class="sec-stats">
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Total Value</div>
+              <div style="font-weight:700;color:var(--accent);font-size:16px">${fU(val)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Total P&L</div>
+              <div style="color:${cl(pnl)};font-weight:700;font-size:14px">${fS(pnl)} (${fP(pnlP)})</div>
+            </div>
+          </div>
+      </div>
+      <div class="sec-content">
+        <div class="sec-chart-col">
+          <div class="sl" style="margin-bottom:12px"><i class="fa-solid fa-chart-line"></i>&nbsp;Sector Combined Performance — 1 Month</div>
+          <div class="chart-div" id="sec_chart_${si}" style="height:260px"></div>
+        </div>
+        ${(()=>{
+          if(!sp.length) return '';
+          const cards = sp.map(p => {
+            const sm = getStkMonth(p.t, p.sh);
+            const chg = sm.data.length > 1 ? ((sm.data[sm.data.length-1] - sm.data[0]) / sm.data[0]) * 100 : 0;
+            return '<div class="stk-card" onclick="openDetail(\'' + p.t + '\')" style="margin:0">'
+              + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+              + '<div><div class="stk-title">' + p.n + '</div>'
+              + '<div class="stk-sub"><div class="d9" style="background:' + meta.color + ';width:7px;height:7px"></div><span>' + p.t + '</span></div></div>'
+              + '<div style="text-align:right">'
+              + '<div style="font-size:12px;font-weight:700">' + (p.price ? fU(p.price) : '—') + '</div>'
+              + '<div style="font-size:10px;color:' + cl(chg) + ';font-weight:600">' + fP(chg) + ' <span style="font-size:8px;color:var(--muted)">1M</span></div>'
+              + '</div></div>'
+              + '<div class="chart-div" id="stk_' + p.t + '" style="height:60px;margin-top:8px"></div>'
+              + '</div>';
+          }).join('');
+          return '<div class="sec-cards-col">'
+            + '<div class="sl" style="margin-bottom:12px"><i class="fa-solid fa-layer-group"></i>&nbsp;Individual Holdings</div>'
+            + '<div class="stock-grid">' + cards + '</div></div>';
+        })()}
+      </div>
+    </div>`;
+      }).join("") + `</div>`;
+      const pos2 = getPos();
+      const noData = `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;letter-spacing:.5px">NO HISTORY DATA</div>`;
+      sectors.forEach((sector, si) => {
+        const color = (SM[sector] || { color: "#2563eb" }).color;
+        const sectorPositions = pos2.filter(p => p.s === sector);
+
+        const secChartEl = document.getElementById(`sec_chart_${si}`);
+        if (secChartEl && sectorPositions.length > 0) {
+          const combinedData = {};
+          sectorPositions.forEach(p => {
+            const sm = getStkMonth(p.t, p.sh);
+            sm.labels.forEach((l, idx) => {
+              combinedData[l] = (combinedData[l] || 0) + sm.data[idx];
+            });
+          });
+          const sorted = Object.entries(combinedData).sort(([a], [b]) => a.localeCompare(b));
+          const labels = sorted.map(x => x[0]), data = sorted.map(x => x[1]);
+          if (data.length > 1) drawChart(secChartEl, labels, data, color, 260, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+          else secChartEl.innerHTML = noData;
+        }
+
+        sectorPositions.forEach(p => {
+          const stkEl = document.getElementById("stk_" + p.t);
+          const sm = getStkMonth(p.t, p.sh);
+          if (stkEl) {
+            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, color, 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+            else stkEl.innerHTML = noData;
+          }
+        });
+      });
+    }
+
+    function openDetail(t) {
+      detailT = t; curTab = "performance";
+      document.querySelectorAll(".tab").forEach(el => el.classList.toggle("active", el.textContent.toLowerCase().includes("perf")));
+      render();
+    }
+    function setPerfTF(tf) { perfTimeframe = tf; renderPerf(document.getElementById("content")); }
+    function renderPerf(el) {
+      const pos = getPos(), p = detailT ? pos.find(x => x.t === detailT) : null;
+      const arr = p && p.dayC >= 0 ? '<i class="fa-solid fa-caret-up"></i>' : '<i class="fa-solid fa-caret-down"></i>';
+      const stats = p && p.price ? `<div class="pstats" style="flex-wrap:wrap;row-gap:8px;column-gap:16px;min-width:0;overflow:hidden">
+    <div style="display:flex;flex-direction:column">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Price</div>
+      <div style="font-weight:700"><b>${fU(p.price)}</b></div>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Value</div>
+      <div style="font-weight:700"><b>${fU(p.val)}</b></div>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">P&amp;L</div>
+      <div style="font-weight:700;color:${cl(p.pnl)}">${fS(p.pnl)} (${fP(p.pnlP)})</div>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Today</div>
+      <div style="font-weight:700;color:${cl(p.dayC)}">${arr} ${fP(p.dayC)}</div>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Shares</div>
+      <div style="font-weight:700"><b>${p.sh}</b></div>
+    </div>
+  </div>`: "";
+      const tfs = ["1 Month", "3 Months", "6 Months", "1 Year"];
+      const tfBar = `<div style="display:flex;gap:4px;margin-left:auto">
+    ${tfs.map(tf => `<button onclick="setPerfTF('${tf}')" style="padding:5px 11px;border-radius:6px;border:1px solid ${perfTimeframe === tf ? "var(--blue)" : "var(--border)"};background:${perfTimeframe === tf ? "var(--blue)" : "var(--dim)"};color:${perfTimeframe === tf ? "#fff" : "var(--muted)"};font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all .15s">${tf}</button>`).join("")}
+  </div>`;
+      el.innerHTML = `<div class="perf-hdr" style="flex-wrap:wrap;row-gap:8px;min-width:0;align-items:center">
+    ${detailT ? `<button onclick="backToPort()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;transition:background .15s;flex-shrink:0" onmouseover="this.style.background='var(--blue)'" onmouseout="this.style.background='var(--accent)'"><i class="fa-solid fa-arrow-left"></i> All Stocks</button>` : ""}
+    <span class="ptitle" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${detailT ? `${p?.n} (${detailT})` : "Portfolio"}</span>${stats}
+    ${tfBar}
+  </div>
+  <div class="chdiv">
+    <div class="clbl"><i class="fa-solid fa-chart-line" style="margin-right:6px"></i>${detailT ? "Position Value" : "Total Equity Value"} — ${perfTimeframe}</div>
+    <div class="chart-div" id="mc" style="height:340px"></div>
+  </div>
+  ${!detailT ? `<div class="sgrid" id="sg"></div>` : `<div id="perf-table-wrap"></div>`}`;
+      if (!detailT) updatePerfGrid(pos);
+      const mcEl = document.getElementById("mc"); if (!mcEl) return;
+      const isD = !!detailT;
+      const tfDays = { "1 Month": 22, "3 Months": 66, "6 Months": 132, "1 Year": 365 };
+      const days = tfDays[perfTimeframe] || 365;
+      const rawAll = isD ? (hist[detailT] || []).map(d => ({ date: d.date, v: +(d.close * (p?.sh || 1)).toFixed(2) })) : portHist.map(d => ({ date: d.date, v: d.value }));
+      const raw = rawAll.slice(-days);
+      const labels = raw.map(x => x.date), data = raw.map(x => x.v);
+      if (!data.length) { mcEl.innerHTML = `<div style="height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;letter-spacing:.5px">No chart data available</div>`; return; }
+      const color = isD ? (SM[p?.s] || { color: "#2563eb" }).color : "#2563eb";
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      function shortDate(ds) { if (!ds) return ""; const [y, m] = ds.split("-"); return MONTHS[+m - 1] + " '" + String(y).slice(2); }
+      const tfStr = labels.length > 1 ? `${shortDate(labels[0])} – ${shortDate(labels[labels.length - 1])}` : "";
+      drawChart(mcEl, labels, data, color, 340, { dots: false, tight: false, yFmt: fK, timeframe: tfStr });
+
+      if (isD && raw.length > 0) {
+        const wrap = document.getElementById("perf-table-wrap");
+        if (wrap) {
+          const MONTHS2 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+          const fmtD = ds => { if(!ds) return ""; const [yr,mo,dy] = ds.split("-"); return MONTHS2[+mo-1]+" "+dy+", '"+yr.slice(2); };
+          const rows = [...raw].reverse(); // newest first
+          const first = raw[0].v;
+          wrap.innerHTML = '<div class="chdiv" style="margin-top:16px">'
+            + '<div class="clbl" style="margin-bottom:12px"><i class="fa-solid fa-table-list" style="margin-right:6px"></i>DATA TABLE — ' + perfTimeframe + '</div>'
+            + '<div class="scroll-x" style="overflow-x:auto">'
+            + '<table style="min-width:420px"><thead><tr>'
+            + '<th style="text-align:left">Date</th>'
+            + '<th>Position Value</th>'
+            + '<th>Change</th>'
+            + '<th>vs Period Start</th>'
+            + '</tr></thead><tbody>'
+            + rows.map((row, i) => {
+                const prev = rows[i + 1];
+                const dayChg = prev ? row.v - prev.v : 0;
+                const dayChgPct = prev && prev.v ? (dayChg / prev.v) * 100 : 0;
+                const vsStart = row.v - first;
+                const vsStartPct = first ? (vsStart / first) * 100 : 0;
+                return '<tr>'
+                  + '<td style="text-align:left;color:var(--muted);font-size:12px">' + fmtD(row.date) + '</td>'
+                  + '<td style="font-weight:600">' + fU(row.v) + '</td>'
+                  + '<td style="color:' + cl(dayChg) + ';font-weight:600">' + (prev ? fS(dayChg) + ' (' + fP(dayChgPct) + ')' : '—') + '</td>'
+                  + '<td style="color:' + cl(vsStart) + ';font-weight:600">' + fS(vsStart) + ' (' + fP(vsStartPct) + ')' + '</td>'
+                  + '</tr>';
+              }).join('')
+            + '</tbody></table></div></div>';
+        }
+      }
+    }
+    function backToPort() { detailT = null; render(); }
+    function updatePerfGrid(pos) {
+      const sg = document.getElementById("sg"); if (!sg) return;
+      sg.innerHTML = (pos || getPos()).map((p, i) => {
+        const sc = (SM[p.s] || { color: "#888" }).color;
+        const arr = p.dayC >= 0 ? '<i class="fa-solid fa-caret-up"></i>' : '<i class="fa-solid fa-caret-down"></i>';
+        return `<div class="scard" onclick="openDetail('${p.t}')" style="animation:scaleIn .25s ${i * .02}s ease both; padding:16px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <div class="d9" style="background:${p.color}"></div>
+        <span style="font-weight:700;font-size:14px">${p.t}</span>
+        <span class="sbadge" style="background:${sc}14;color:${sc};margin-left:auto">${p.s.split(" ")[0].slice(0, 5)}</span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div style="display:flex; flex-direction:column">
+          <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Price</div>
+          <div style="font-family:'DM Sans',sans-serif; font-size:18px; font-weight:700">${p.price ? fU(p.price) : "—"}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; text-align:right">
+          <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Today</div>
+          <div style="font-size:14px; color:${cl(p.dayC)}; font-weight:700">${p.price ? arr + " " + fP(p.dayC) : "—"}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border)">
+        <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Total Return</div>
+        <div style="font-size:13px; color:${cl(p.pnlP)}; font-weight:700">${fP(p.pnlP)}</div>
+      </div>
+    </div>`;
+      }).join("");
+    }
+    function switchToSector(sector) {
+      setTab('sectors');
+      setTimeout(() => {
+        const cards = document.querySelectorAll('.sec-card');
+        for (const card of cards) {
+          const nameEl = card.querySelector('.sec-name');
+          if (nameEl && nameEl.textContent.trim() === sector) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+          }
+        }
+      }, 200);
+    }
+
+    function renderLockOverlay() {
+      let lockEl = document.getElementById("hold-lock");
+      if (!lockEl) {
+        lockEl = document.createElement("div");
+        lockEl.id = "hold-lock";
+        document.body.appendChild(lockEl);
+      }
+      const isHold = curTab === "holdings" && !holdingsUnlocked;
+      const isWeight = curTab === "weightings" && !weightingsUnlocked;
+      const isUV = curTab === "unitvalue" && !unitvalueUnlocked;
+
+      if (isHold || isWeight || isUV) {
+        const type = isHold ? "Holdings" : isWeight ? "Weightings" : "Unit Value";
+        const typeKey = isHold ? "holdings" : isWeight ? "weightings" : "unitvalue";
+        lockEl.innerHTML = `
+      <div id="lock-bg" style="position:fixed; left:0; right:0; bottom:0; background:rgba(45, 74, 62, 0.25); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:400;"></div>
+      <div id="lock-fg" style="position:fixed; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; z-index:401;">
+        <div style="background:var(--card); padding:30px 40px; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.3); text-align:center; width:320px; animation: scaleIn .3s ease both;">
+          <i class="fa-solid fa-lock" style="font-size:32px; color:var(--muted); margin-bottom:16px;"></i>
+          <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:22px; color:var(--accent); margin-bottom:6px;">${type} Locked</div>
+          <div style="font-size:12px; color:var(--muted); margin-bottom:20px;">Enter session password to unlock</div>
+          <input type="password" id="h-pwd" placeholder="Password" class="fi" autocomplete="new-password" style="text-align:center; margin-bottom:12px;" onkeydown="if(event.key==='Enter')checkTabPwd('${typeKey}')"/>
+          <button class="fb" onclick="checkTabPwd('${typeKey}')" style="background:var(--blue)"><i class="fa-solid fa-unlock"></i>&nbsp;Unlock ${type}</button>
+          <div id="h-pwd-err" style="color:var(--red); font-size:11px; margin-top:12px; display:none; animation:wiggle .3s ease">Incorrect password</div>
+        </div>
+      </div>`;
+        setTimeout(() => {
+          const navH = (document.querySelector('nav') || {}).offsetHeight || 56;
+          const bg = document.getElementById('lock-bg'), fg = document.getElementById('lock-fg');
+          if (bg) bg.style.top = navH + 'px';
+          if (fg) fg.style.top = navH + 'px';
+          const p = document.getElementById("h-pwd"); if (p) p.focus();
+        }, 10);
+      } else {
+        lockEl.innerHTML = "";
+      }
+    }
+
+    async function checkTabPwd(type) {
+      const p = document.getElementById("h-pwd").value;
+      const err = document.getElementById("h-pwd-err");
+      try {
+        const r = await fetch(`/api/auth?pwd=${encodeURIComponent(p)}&type=${type}`, { cache: 'no-store' });
+        const d = await r.json();
+        if (d.ok) {
+          if (type === 'holdings') holdingsUnlocked = true;
+          else if (type === 'weightings') weightingsUnlocked = true;
+          else if (type === 'unitvalue') unitvalueUnlocked = true;
+          const lockEl = document.getElementById("hold-lock");
+          if (lockEl) lockEl.innerHTML = "";
+          setTab(curTab);
+        } else {
+          err.style.display = "block";
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function renderDeleteModal() {
+      let delEl = document.getElementById("delete-modal");
+      if (!delEl) {
+        delEl = document.createElement("div");
+        delEl.id = "delete-modal";
+        document.body.appendChild(delEl);
+      }
+      if (deletingIdx !== null) {
+        const t = HOLD[deletingIdx].t;
+        delEl.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(45, 74, 62, 0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:500; animation: fadeIn .3s ease"></div>
+      <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:501;">
+        <div style="background:var(--card); padding:32px; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,0.4); text-align:center; width:340px; animation: scaleIn .3s ease both;">
+          <div style="width:64px; height:64px; background:#fef2f2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+            <i class="fa-solid fa-trash-can" style="font-size:24px; color:var(--red);"></i>
+          </div>
+          <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:24px; color:var(--accent); margin-bottom:8px;">Are you sure?</div>
+          <div style="font-size:14px; color:var(--muted); margin-bottom:28px; line-height:1.5">You are about to remove <b>${t}</b> from your portfolio. This action cannot be undone.</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="fcb" onclick="cancelRmv()" style="margin:0; padding:0; height:44px;">Cancel</button>
+            <button class="fb" onclick="confirmRmv()" style="background:var(--red); border-color:var(--red); margin:0; padding:0; height:44px;"><i class="fa-solid fa-trash-can"></i> Remove</button>
+          </div>
+        </div>
+      </div>`;
+      } else {
+        delEl.innerHTML = "";
+      }
+    }
+
+    function showDeleteConfirm(i) {
+      deletingIdx = i;
+      render();
+    }
+
+    function cancelRmv() {
+      deletingIdx = null;
+      render();
+    }
+
+    function confirmRmv() {
+      if (deletingIdx !== null) {
+        HOLD.splice(deletingIdx, 1);
+        deletingIdx = null;
+        editIdx = null;
+        invalidatePos();
+        updateSummary();
+        render();
+        saveHoldings();
+      }
+    }
+
+    function renderHold(el) {
+      const pos = getPos(), tC = pos.reduce((s, p) => s + p.cost, 0);
+      const pointerStyle = holdingsUnlocked ? "" : "pointer-events:none;";
+      el.innerHTML = `
+    <div class="hgrid" style="${pointerStyle}">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="fpanel">
+        <div class="sl" style="margin-bottom:16px"><i class="fa-solid fa-${editIdx !== null ? "pen-to-square" : "circle-plus"}"></i> ${editIdx !== null ? "Edit Position" : "Add Position"}</div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-hashtag" style="font-size:9px"></i> Ticker</div><input class="fi" id="ft" placeholder="e.g. AAPL" type="text" autocomplete="off"/></div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-calendar-days" style="font-size:9px"></i> Purchase Date</div><input class="fi" id="fd" type="date" autocomplete="off"/></div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-layer-group" style="font-size:9px"></i> Shares</div><input class="fi" id="fs" placeholder="e.g. 69.88" type="number" autocomplete="off"/></div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-dollar-sign" style="font-size:9px"></i> Avg Cost ($)</div><input class="fi" id="fc" placeholder="e.g. 18.74" type="number" autocomplete="off"/></div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-building" style="font-size:9px"></i> Sector</div>
+          <input type="hidden" id="fsec" value="${editIdx !== null ? HOLD[editIdx].s : "Information Technology"}"/>
+          <div class="cd-trigger" onclick="event.stopPropagation(); openCD(this, Object.keys(SM), (v)=>{document.getElementById('fsec').value=v; this.querySelector('span').textContent=v; valHoldControls();})">
+            <span>${editIdx !== null ? HOLD[editIdx].s : "Information Technology"}</span>
+            <i class="fa-solid fa-chevron-down" style="font-size:10px; color:var(--muted)"></i>
+          </div>
+        </div>
+        <button class="fb" id="upsert-btn" onclick="upsert()"><i class="fa-solid fa-${editIdx !== null ? "check" : "plus"}"></i> ${editIdx !== null ? "Update" : "Add Position"}</button>
+        ${editIdx !== null ? `<button class="fcb" onclick="cancelEdit()"><i class="fa-solid fa-xmark"></i> Cancel</button>` : ""}
+      </div>
+      <div style="background:var(--card);border-radius:14px;box-shadow:var(--sh);padding:18px 20px;animation:slideUp .3s .2s ease both">
+        <div class="sl" style="margin-bottom:12px"><i class="fa-solid fa-building-columns"></i>&nbsp;Cash Balances</div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-landmark" style="font-size:9px"></i> Bank Balance ($)</div>
+          <input class="fi" id="cash-bank" type="number" autocomplete="off" placeholder="e.g. 265.24" value="${CASH_BANK}"/></div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-briefcase" style="font-size:9px"></i> Brokerage Cash ($)</div>
+          <input class="fi" id="cash-brok" type="number" autocomplete="off" placeholder="e.g. 11387.02" value="${CASH_BROK}"/></div>
+        <button class="fb" onclick="saveCashUI()" style="margin-top:4px"><i class="fa-solid fa-floppy-disk"></i> Save Cash Balances</button>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);line-height:2">
+          <div style="display:flex;justify-content:space-between;padding:2px 0"><span>Units</span><span>${UNITS.toLocaleString()}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:700;border-top:1px solid var(--border);margin-top:3px"><span>Total Cash</span><span>${fU(CASH_BANK + CASH_BROK)}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="hlp">
+      <div class="hlh">
+        <span style="font-size:10px;letter-spacing:1.5px;color:var(--muted);font-weight:600"><i class="fa-solid fa-briefcase" style="margin-right:5px"></i>${HOLD.length} POSITIONS</span>
+        <span style="font-size:12px;color:var(--muted)">${fU(tC)} cost basis</span>
+      </div>
+      <div class="hls">${HOLD.map((h, i) => {
+        const pp = pos[i], sc = (SM[h.s] || { color: "#888" }).color;
+        const arr = pp && pp.pnl >= 0 ? '<i class="fa-solid fa-caret-up"></i>' : '<i class="fa-solid fa-caret-down"></i>';
+        return `<div class="hrow" onclick="startEdit(${i})" style="animation:rowIn .2s ${i * .018}s ease both">
+          <div class="hi"><div class="d9" style="background:${pp.color}"></div>
+            <div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="hname">${h.t}</span>
+                <span class="sbadge" style="background:${sc}14;color:${sc}">${h.s}</span>
+              </div>
+              <div class="hsub">${h.sh} sh @ ${fU(h.ac)} · <b style="color:var(--text)">${fU(h.ac * h.sh)}</b> · <span style="font-weight:600;color:var(--accent)">Bought: ${h.d || "Not set"}</span></div>
+            </div>
+          </div>
+          <div class="hrt">
+            ${pp && pp.val > 0 ? `<span style="color:${cl(pp.pnl)};font-weight:600">${arr} ${fS(pp.pnl)} (${fP(pp.pnlP)})</span>
+            <span style="color:var(--muted)">${fU(pp.val)}</span>` : ""}
+            <button class="rmbtn" onclick="rmv(event,${i})"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>`;
+      }).join("")}
+      </div>
+    </div>
+    </div>
+    </div>`;
+      if (editIdx !== null) {
+        const h = HOLD[editIdx];
+        document.getElementById("ft").value = h.t;
+        document.getElementById("fd").value = h.d || "";
+        document.getElementById("fs").value = h.sh;
+        document.getElementById("fc").value = h.ac;
+        document.getElementById("fsec").value = h.s;
+      }
+      if (editIdx !== null) {
+        const h = HOLD[editIdx];
+        ["ft", "fs", "fc"].forEach((id, i) => { const e = document.getElementById(id); if (e) e.value = [h.t, h.sh, h.ac][i]; });
+      }
+      ["ft", "fs", "fc"].forEach(id => {
+        const e = document.getElementById(id); if (e) {
+          e.addEventListener("keydown", ev => { if (ev.key === "Enter" && !e.disabled) upsert(); });
+          e.addEventListener("input", valHoldControls);
+        }
+      });
+      valHoldControls();
+    }
+
+    function valHoldControls() {
+      const t = (document.getElementById("ft")?.value || "").trim();
+      const s = parseFloat(document.getElementById("fs")?.value);
+      const c = parseFloat(document.getElementById("fc")?.value);
+      const btn = document.getElementById("upsert-btn");
+      if (btn) btn.disabled = (!t || isNaN(s) || s <= 0 || isNaN(c) || c <= 0);
+    }
+    async function checkHPwd() {
+      const btn = document.querySelector('#hold-lock .fb');
+      if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Checking...';
+      try {
+        const errEl = document.getElementById("h-pwd-err");
+        errEl.style.display = "none";
+        const p = document.getElementById("h-pwd").value;
+        const r = await fetch('/api/auth?pwd=' + encodeURIComponent(p), { cache: 'no-store' });
+        if (r.ok) {
+          holdingsUnlocked = true;
+          document.body.style.overflow = "";
+          renderLockOverlay();
+          renderHold(document.getElementById("content"));
+        } else {
+          document.getElementById("h-pwd-err").style.display = "block";
+          if (btn) btn.innerHTML = '<i class="fa-solid fa-unlock"></i>&nbsp;Unlock';
+        }
+      } catch (e) {
+        document.getElementById("h-pwd-err").textContent = "Network error";
+        document.getElementById("h-pwd-err").style.display = "block";
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-unlock"></i>&nbsp;Unlock';
+      }
+    }
+    function startEdit(i) { editIdx = i; renderHold(document.getElementById("content")); }
+    function cancelEdit() { editIdx = null; renderHold(document.getElementById("content")); }
+    async function upsert() {
+      const t = (document.getElementById("ft").value || "").toUpperCase().trim();
+      const d = document.getElementById("fd").value || null;
+      const s = parseFloat(document.getElementById("fs").value);
+      const c = parseFloat(document.getElementById("fc").value);
+      const sec = document.getElementById("fsec").value;
+      if (!t || isNaN(s) || isNaN(c)) return;
+
+      const btn = document.getElementById("upsert-btn");
+      if (btn) { btn._savedOldText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...'; btn.disabled = true; }
+
+      const i = HOLD.findIndex(h => h.t === t);
+      if (i >= 0) { HOLD[i].sh = s; HOLD[i].ac = c; HOLD[i].s = sec; HOLD[i].d = d; }
+      else HOLD.unshift({ t, n: t, s: sec, sh: s, ac: c, d });
+
+      editIdx = null;
+
+      updateSummary(true);
+      await saveHoldings();
+
+      const ls = document.getElementById("ls"), app = document.getElementById("app");
+      if (ls) ls.style.display = "flex";
+      if (app) app.style.display = "none";
+
+      try {
+        await loadAll();
+      } catch (e) {
+        console.error("Full refresh failed:", e);
+      } finally {
+        if (ls) ls.style.display = "none";
+        if (app) app.style.display = "block";
+        render();
+      }
+    }
+    function rmv(e, i) {
+      e.stopPropagation();
+      showDeleteConfirm(i);
+    }
+    async function saveCashUI() {
+      const btn = document.querySelector('button[onclick="saveCashUI()"]');
+      if (!btn) return;
+      btn._savedOldText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+      btn.disabled = true;
+
+      const b = parseFloat(document.getElementById("cash-bank").value) || 0;
+      const br = parseFloat(document.getElementById("cash-brok").value) || 0;
+      CASH_BANK = b; CASH_BROK = br;
+
+      const success = await saveCash();
+      saveBtnFeedback(btn, success);
+
+      updateSummary();
+      renderHold(document.getElementById("content"));
+    }
+
+    async function saveAllDataUI() {
+      const bEl = document.getElementById("cash-bank"), brEl = document.getElementById("cash-brok");
+      if (bEl) CASH_BANK = parseFloat(bEl.value) || 0;
+      if (brEl) CASH_BROK = parseFloat(brEl.value) || 0;
+
+      updateSummary(true); 
+      const ok = await saveWeightings(); 
+
+      if (ok) alert("All data saved to database.");
+    }
+
+    function openCD(trigger, options, onSelect, exclude = []) {
+      const existing = document.querySelector(".cd-menu");
+      if (existing && existing._trigger === trigger) { closeCD(); return; }
+      closeCD();
+
+      const filtered = options.filter(o => !exclude.includes(o));
+      const menu = document.createElement("div");
+      menu.className = "cd-menu";
+      menu._trigger = trigger;
+
+      const rect = trigger.getBoundingClientRect();
+      menu.style.top = (rect.bottom + 5) + "px";
+      menu.style.left = rect.left + "px";
+      menu.style.width = Math.max(rect.width, 220) + "px";
+
+      filtered.forEach(opt => {
+        const item = document.createElement("div");
+        item.className = "cd-item";
+        const dot = (SM[opt]?.color) ? `<div class="d9" style="background:${SM[opt].color}; width:8px; height:8px"></div>` : "";
+        item.innerHTML = `${dot} <span>${opt}</span>`;
+        item.onclick = (e) => { e.stopPropagation(); onSelect(opt); closeCD(); };
+        menu.appendChild(item);
+      });
+
+      if (filtered.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "cd-item";
+        empty.style.cssText = "color:var(--muted);cursor:default;font-weight:400";
+        empty.textContent = "No options available";
+        menu.appendChild(empty);
+      }
+
+      document.body.appendChild(menu);
+
+      const onOutsideClick = (e) => {
+        if (!menu.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) {
+          closeCD();
+          document.removeEventListener("click", onOutsideClick, true);
+        }
+      };
+      setTimeout(() => document.addEventListener("click", onOutsideClick, true), 10);
+    }
+
+    function closeCD() {
+      const m = document.querySelector(".cd-menu");
+      if (m) m.remove();
+    }
+    (async function loadCredits() {
+      try {
+        const r = await fetch('/api/credits');
+        const d = await r.json();
+        const el = document.getElementById('ls-credits');
+        if (el && d && d.text) el.textContent = d.text;
+      } catch (e) { }
+    })();
+
+   
+    function uvDateToISO(d) {
+      const [m, day, y] = d.split('/');
+      return `${y}-${m.padStart(2,'0')}-${day.padStart(2,'0')}`;
+    }
+
+    let UNIT_HISTORY = [];
+
+    function renderUnitValue(el) {
+      if (UNIT_HISTORY.length < 2) {
+        el.innerHTML = `
+        <div class="panel" style="animation:slideUp .2s .2s ease both;margin-bottom:16px">
+          <div class="ph"><span><i class="fa-solid fa-plus"></i>&nbsp;Add Entry</span></div>
+          <style>
+            .uv-add-grid { padding:14px 18px;display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:10px;align-items:end }
+            @media(max-width:600px){.uv-add-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}.uv-add-btn-wrap{grid-column:1/-1}}
+          </style>
+          <div class="uv-add-grid">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase"><i class="fa-solid fa-calendar-days" style="font-size:9px"></i> Date</label>
+              <input class="fi" id="uv-add-date" type="date" autocomplete="off" style="width:100%" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase">Unit Value ($)</label>
+              <input class="fi" id="uv-add-val" type="number" step="0.01" placeholder="e.g. 57.42" style="width:100%" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase">S&P 500 Index Value <span style="font-weight:400;text-transform:none">(optional)</span></label>
+              <input class="fi" id="uv-add-sp" type="number" step="0.01" placeholder="e.g. 6800.00" style="width:100%" />
+            </div>
+            <div class="uv-add-btn-wrap" style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:10px;letter-spacing:1px;color:transparent;font-weight:600;text-transform:uppercase;visibility:hidden">.</label>
+              <button class="fb" onclick="addUnitValueEntry()" style="height:42px;padding:0 18px;white-space:nowrap"><i class="fa-solid fa-plus"></i>&nbsp;Add Entry</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="padding:40px;text-align:center;color:var(--muted)">
+          Add at least two entries to see charts and stats.
+        </div>`;
+        return;
+      }
+      const base = UNIT_HISTORY[0].u;
+      const latest = UNIT_HISTORY[UNIT_HISTORY.length - 1];
+      const prev = UNIT_HISTORY[UNIT_HISTORY.length - 2];
+      const spBase = UNIT_HISTORY.find(r => r.sp !== null)?.sp || null;
+
+      const totalReturn = ((latest.u - base) / base * 100).toFixed(1);
+      const monthChange = ((latest.u - prev.u) / prev.u * 100).toFixed(2);
+      const monthChangeAmt = (latest.u - prev.u).toFixed(2);
+      const spLatest = latest.sp;
+      const spTotalReturn = spLatest && spBase ? ((spLatest - spBase) / spBase * 100).toFixed(1) : null;
+
+      const isoLabels = UNIT_HISTORY.map(r => uvDateToISO(r.d));
+      const uVals = UNIT_HISTORY.map(r => r.u);
+      const ttmData = UNIT_HISTORY.slice(-14);
+      const ttmLabels = ttmData.map(r => uvDateToISO(r.d));
+      const ttmVals = ttmData.map(r => r.u);
+
+      el.innerHTML = `
+
+      <div class="uv-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+        <div class="sc" style="animation:slideUp .15s ease both">
+          <div class="sl"><i class="fa-solid fa-coins" style="color:var(--blue)"></i>&nbsp;Current Unit Value</div>
+          <div class="sv">$${latest.u.toFixed(2)}</div>
+          <div style="font-size:11px;margin-top:4px;color:${parseFloat(monthChange)>=0?'var(--green)':'var(--red)'}">
+            ${parseFloat(monthChange)>=0?'▲':'▼'} $${Math.abs(parseFloat(monthChangeAmt)).toFixed(2)} (${Math.abs(parseFloat(monthChange)).toFixed(2)}%) vs prior month
+          </div>
+        </div>
+        <div class="sc" style="animation:slideUp .15s .04s ease both">
+          <div class="sl"><i class="fa-solid fa-chart-line" style="color:var(--green)"></i>&nbsp;Total Return (since 2012)</div>
+          <div class="sv" style="color:var(--green)">+${totalReturn}%</div>
+          <div style="font-size:11px;margin-top:4px;color:var(--muted)">$${base.toFixed(2)} → $${latest.u.toFixed(2)}</div>
+        </div>
+        <div class="sc" style="animation:slideUp .15s .08s ease both">
+          <div class="sl"><i class="fa-solid fa-scale-balanced" style="color:var(--muted)"></i>&nbsp;S&P 500 (since Dec 2018)</div>
+          <div class="sv" style="color:${spTotalReturn && parseFloat(spTotalReturn)>0?'var(--green)':'var(--red)'}">
+            ${spTotalReturn?(parseFloat(spTotalReturn)>0?'+':'')+spTotalReturn+'%':'—'}
+          </div>
+          <div style="font-size:11px;margin-top:4px;color:var(--muted)">${spLatest?'Current: '+spLatest.toLocaleString():''}</div>
+        </div>
+      </div>
+
+
+      <div class="uv-charts" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div class="panel" style="animation:slideUp .2s .08s ease both">
+          <div class="ph" style="flex-direction:column;gap:2px;padding-bottom:10px">
+            <span><i class="fa-solid fa-chart-line"></i>&nbsp;LLF Unit Value by Month</span>
+            <span style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400">Inception-to-Date</span>
+          </div>
+          <div class="chart-div" style="margin:4px 8px 14px" id="uv-chart-itd"></div>
+        </div>
+        <div class="panel" style="animation:slideUp .2s .14s ease both">
+          <div class="ph" style="flex-direction:column;gap:2px;padding-bottom:10px">
+            <span><i class="fa-solid fa-chart-area"></i>&nbsp;LLF Unit Value by Month</span>
+            <span style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400">Trailing Twelve Months</span>
+          </div>
+          <div class="chart-div" style="margin:4px 8px 14px" id="uv-chart-ttm"></div>
+        </div>
+      </div>
+
+
+      <div class="panel" style="animation:slideUp .2s .2s ease both;margin-bottom:16px">
+        <div class="ph"><span><i class="fa-solid fa-${uvEditIdx !== null ? 'pen-to-square' : 'plus'}"></i> ${uvEditIdx !== null ? 'Edit Entry' : 'Add Entry'}</span></div>
+        <style>
+          .uv-add-grid { padding:14px 18px;display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:10px;align-items:end }
+          .uv-add-btn-wrap { padding-top:calc(1em + 4px) }
+          @media(max-width:600px){.uv-add-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}.uv-add-btn-wrap{grid-column:1/-1;padding-top:0}}
+        </style>
+        <div class="uv-add-grid">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase"><i class="fa-solid fa-calendar-days" style="font-size:9px"></i> Date</label>
+            <input class="fi" id="uv-add-date" type="date" autocomplete="off" style="width:100%" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase">Unit Value ($)</label>
+            <input class="fi" id="uv-add-val" type="number" step="0.01" placeholder="e.g. 57.42" style="width:100%" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase">S&P 500 Index Value <span style="font-weight:400;text-transform:none">(optional)</span></label>
+            <input class="fi" id="uv-add-sp" type="number" step="0.01" placeholder="e.g. 6800.00" style="width:100%" />
+          </div>
+          <div class="uv-add-btn-wrap" style="display:flex;gap:6px;align-items:center">
+              <button class="fb" onclick="${uvEditIdx !== null ? 'updateUVEntry()' : 'addUnitValueEntry()'}" style="height:42px;padding:0 18px;white-space:nowrap;flex:1"><i class="fa-solid fa-${uvEditIdx !== null ? 'check' : 'plus'}"></i> ${uvEditIdx !== null ? 'Update' : 'Add Entry'}</button>
+              ${uvEditIdx !== null ? '<button class="fcb" onclick="cancelUVEdit()" style="height:42px;padding:0 14px;white-space:nowrap"><i class="fa-solid fa-xmark"></i></button>' : ''}
+          </div>
+        </div>
+      </div>
+
+
+      <div class="panel" style="animation:slideUp .2s .24s ease both">
+        <div class="ph" style="display:flex;justify-content:space-between;align-items:center">
+          <span><i class="fa-solid fa-table-list"></i>&nbsp;Monthly Unit Value History</span>
+          <span style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0">${UNIT_HISTORY.length} months</span>
+        </div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+          <table>
+            <thead style="position:sticky;top:0;background:var(--card);z-index:2">
+              <tr>
+                <th style="text-align:left">Date</th>
+                <th>Unit Value</th>
+                <th>S&P 500</th>
+                <th>Monthly Change</th>
+                <th>Since Inception</th>
+                <th style="text-align:center;width:50px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${[...UNIT_HISTORY].reverse().map((r, i, arr) => {
+                const origIdx = UNIT_HISTORY.length - 1 - i;
+                const prevRow = arr[i + 1];
+                const mChg = prevRow ? ((r.u - prevRow.u) / prevRow.u * 100) : null;
+                const mChgAmt = prevRow ? (r.u - prevRow.u) : null;
+                const sinceInc = ((r.u - base) / base * 100);
+                const isYearBoundary = prevRow && r.d.split('/')[2] !== prevRow.d.split('/')[2];
+                const isEditing = uvEditIdx === origIdx;
+                return `<tr onclick="startUVEdit(${origIdx})" style="cursor:pointer;${isYearBoundary?'border-top:2px solid var(--border)':''}${isEditing?';background:var(--dim);outline:2px solid var(--blue);outline-offset:-2px;border-radius:4px':''}">
+                  <td style="text-align:left;color:var(--muted);font-size:12px;white-space:nowrap">${r.d}</td>
+                  <td style="font-weight:700;font-family:'DM Sans',sans-serif">$${r.u.toFixed(2)}</td>
+                  <td style="color:var(--muted)">${r.sp?r.sp.toLocaleString():'—'}</td>
+                  <td style="color:${mChg===null?'var(--muted)':mChg>=0?'var(--green)':'var(--red)'};font-weight:600">
+                    ${mChg===null?'—':`${mChgAmt>=0?'+':''}$${Math.abs(mChgAmt).toFixed(2)} (${mChg>=0?'+':''}${mChg.toFixed(2)}%)`}
+                  </td>
+                  <td style="color:${sinceInc>=0?'var(--green)':'var(--red)'};font-weight:600">
+                    ${sinceInc>=0?'+':''}${sinceInc.toFixed(1)}%
+                  </td>
+                  <td style="text-align:center;padding:6px 8px">
+                    <button class="rmbtn" onclick="event.stopPropagation();uvRmv(${origIdx})" title="Remove entry"><i class="fa-solid fa-xmark"></i></button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+      requestAnimationFrame(() => {
+        const itdEl = document.getElementById('uv-chart-itd');
+        const ttmEl = document.getElementById('uv-chart-ttm');
+        if (itdEl) drawChart(itdEl, isoLabels, uVals, '#c0392b', 240, { dots: false, tight: false, yFmt: v => '$'+v.toFixed(0) });
+        if (ttmEl) drawChart(ttmEl, ttmLabels, ttmVals, '#c0392b', 240, { dots: false, tight: false, yFmt: v => '$'+v.toFixed(0) });
+      });
+      if (uvEditIdx !== null) {
+        const r = UNIT_HISTORY[uvEditIdx];
+        const [m, day, y] = r.d.split('/').map(Number);
+        const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const dateEl = document.getElementById('uv-add-date');
+        const valEl  = document.getElementById('uv-add-val');
+        const spEl   = document.getElementById('uv-add-sp');
+        if (dateEl) dateEl.value = dateStr;
+        if (valEl)  valEl.value  = r.u;
+        if (spEl)   spEl.value   = r.sp !== null ? r.sp : '';
+      }
+    }
+
+    function startUVEdit(i) {
+      uvEditIdx = i;
+      renderUnitValue(document.getElementById('content'));
+    }
+
+    function cancelUVEdit() {
+      uvEditIdx = null;
+      renderUnitValue(document.getElementById('content'));
+    }
+
+    function uvRmv(i) {
+      uvDeletingIdx = i;
+      renderUVDeleteModal();
+    }
+
+    function uvCancelRmv() {
+      uvDeletingIdx = null;
+      renderUVDeleteModal();
+    }
+
+    function uvConfirmRmv() {
+      if (uvDeletingIdx !== null) {
+        UNIT_HISTORY.splice(uvDeletingIdx, 1);
+        uvDeletingIdx = null;
+        uvEditIdx = null;
+        saveUnitValue();
+        renderUVDeleteModal();
+        renderUnitValue(document.getElementById('content'));
+      }
+    }
+
+    function renderUVDeleteModal() {
+      let delEl = document.getElementById("uv-delete-modal");
+      if (!delEl) {
+        delEl = document.createElement("div");
+        delEl.id = "uv-delete-modal";
+        document.body.appendChild(delEl);
+      }
+      if (uvDeletingIdx !== null) {
+        const r = UNIT_HISTORY[uvDeletingIdx];
+        delEl.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(45, 74, 62, 0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:500; animation: fadeIn .3s ease"></div>
+      <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:501;">
+        <div style="background:var(--card); padding:32px; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,0.4); text-align:center; width:340px; animation: scaleIn .3s ease both;">
+          <div style="width:64px; height:64px; background:#fef2f2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+            <i class="fa-solid fa-trash-can" style="font-size:24px; color:var(--red);"></i>
+          </div>
+          <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:24px; color:var(--accent); margin-bottom:8px;">Are you sure?</div>
+          <div style="font-size:14px; color:var(--muted); margin-bottom:28px; line-height:1.5">You are about to remove the entry for <b>${r.d}</b> ($${r.u.toFixed(2)}). This action cannot be undone.</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="fcb" onclick="uvCancelRmv()" style="margin:0; padding:0; height:44px;">Cancel</button>
+            <button class="fb" onclick="uvConfirmRmv()" style="background:var(--red); border-color:var(--red); margin:0; padding:0; height:44px;"><i class="fa-solid fa-trash-can"></i> Remove</button>
+          </div>
+        </div>
+      </div>`;
+      } else {
+        delEl.innerHTML = "";
+      }
+    }
+
+    function updateUVEntry() {
+      if (uvEditIdx === null) return;
+      const dateEl = document.getElementById('uv-add-date');
+      const valEl = document.getElementById('uv-add-val');
+      const spEl  = document.getElementById('uv-add-sp');
+      const u = parseFloat(valEl.value);
+      const sp = spEl.value.trim() ? parseFloat(spEl.value) : null;
+      if (isNaN(u) || u <= 0) return;
+      if (dateEl && dateEl.value) {
+        const [y, m, day] = dateEl.value.split('-').map(Number);
+        UNIT_HISTORY[uvEditIdx].d = `${m}/${day}/${y}`;
+      }
+      UNIT_HISTORY[uvEditIdx].u = u;
+      UNIT_HISTORY[uvEditIdx].sp = sp;
+      UNIT_HISTORY.sort((a, b) => {
+        const [am, ad, ay] = a.d.split('/').map(Number);
+        const [bm, bd, by] = b.d.split('/').map(Number);
+        return new Date(ay, am-1, ad) - new Date(by, bm-1, bd);
+      });
+      uvEditIdx = null;
+      saveUnitValue();
+      renderUnitValue(document.getElementById('content'));
+    }
+
+    function addUnitValueEntry() {
+      const dateEl = document.getElementById('uv-add-date');
+      const valEl  = document.getElementById('uv-add-val');
+      const spEl   = document.getElementById('uv-add-sp');
+      const rawDate = (dateEl.value || '').trim();
+      const u = parseFloat(valEl.value);
+      const sp = spEl.value.trim() ? parseFloat(spEl.value) : null;
+
+      if (!rawDate) return;
+      if (isNaN(u) || u <= 0) return;
+
+      const [y, m, day] = rawDate.split('-').map(Number);
+      const d = `${m}/${day}/${y}`;
+
+      if (UNIT_HISTORY.find(r => r.d === d)) return;
+
+      UNIT_HISTORY.push({ d, u, sp });
+      UNIT_HISTORY.sort((a, b) => {
+        const [am, ad, ay] = a.d.split('/').map(Number);
+        const [bm, bd, by] = b.d.split('/').map(Number);
+        return new Date(ay, am-1, ad) - new Date(by, bm-1, bd);
+      });
+
+      dateEl.value = ''; valEl.value = ''; spEl.value = '';
+      saveUnitValue();
+      renderUnitValue(document.getElementById('content'));
+    }
+
+    (async function boot() {
+      try {
+        await loadData();
+        await loadAll();
+        setProg(100, "Ready", "All data loaded");
+        await sleep(350);
+        document.getElementById("ls").style.display = "none";
+        document.getElementById("app").style.display = "block";
+
+        render();
+
+      } catch (e) {
+        pauseProg("Failed to load — check your API key");
+        showLsErr(e.message);
+      }
+    })();
+  
+    window.addEventListener('online', () => { isOffline = false; tc = 1; tick(); });
+    window.addEventListener('offline', () => { isOffline = true; tick(); });
+
+    window.addEventListener('load', function() {
+        if (window.innerWidth > 768) return; 
+      const TABS = ['dashboard', 'sectors', 'performance', 'holdings', 'weightings', 'unitvalue'];
+      let touchStartX = 0, touchStartY = 0, startTarget = null;
+      const THRESHOLD = 55, MAX_Y = 80;
+      document.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        startTarget = e.touches[0].target;
+      }, { passive: true });
+      document.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+        if (Math.abs(dx) < THRESHOLD || dy > MAX_Y) return;
+        const scrollable = startTarget && startTarget.closest('.tabs, .hls, .scroll-x, [style*="overflow-x"]');
+        if (scrollable) return;
+        const cur = TABS.indexOf(curTab);
+        if (cur < 0) return;
+        if (dx < 0 && cur < TABS.length - 1) setTab(TABS[cur + 1]);
+        if (dx > 0 && cur > 0) setTab(TABS[cur - 1]);
+      }, { passive: true });
+    });
+
+  </script>
+</body>
+
+</html>
