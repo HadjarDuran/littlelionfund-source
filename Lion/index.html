@@ -1316,6 +1316,17 @@
     }
     .nav-bottom {
       display: none;
+      position: relative;
+    }
+    .nav-bottom.has-more::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 30px;
+      background: linear-gradient(to right, transparent, var(--nav-bg));
+      pointer-events: none;
     }
     .tabs {
       display: flex;
@@ -1555,7 +1566,11 @@
   </div>
 
   <script>
-    let API_KEY = localStorage.getItem("llf_key") || "d76ma01r01qtg3ne4uc0d76ma01r01qtg3ne4ucg";
+    // No hardcoded fallback key: a Finnhub key baked into public client code
+    // is a leaked credential the moment this file is on GitHub. Users can
+    // still add their own personal key via "Change API Key" for the backup
+    // history fetch; without one, that fallback is simply skipped.
+    let API_KEY = localStorage.getItem("llf_key") || "";
     const FB = "https://finnhub.io/api/v1";
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -1575,6 +1590,7 @@
       "#1d4ed8", "#c2410c", "#0e7490", "#6d28d9", "#047857", "#b91c1c", "#ca8a04", "#0f766e"];
 
     const REFRESH_INTERVAL = 120;
+    let AUTH_TOKENS = { holdings: null, weightings: null };
     let HOLD = [], CASH_BANK = 0, CASH_BROK = 0;
     let prices = {}, hist = {}, portHist = [];
     let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false;
@@ -1627,11 +1643,17 @@
       }
     }
 
+    function authHeaders(scope) {
+      const h = { 'Content-Type': 'application/json' };
+      if (AUTH_TOKENS[scope]) h['Authorization'] = 'Bearer ' + AUTH_TOKENS[scope];
+      return h;
+    }
+
     async function saveUnitValue() {
       try {
         const r = await fetch('/api/unitvalue', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders('holdings'),
           body: JSON.stringify(UNIT_HISTORY)
         });
         return r.ok;
@@ -1645,7 +1667,7 @@
       try {
         await fetch('/api/holdings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders('holdings'),
           body: JSON.stringify(HOLD)
         });
       } catch (error) {
@@ -1657,7 +1679,7 @@
       try {
         const r = await fetch('/api/cash', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders('holdings'),
           body: JSON.stringify({ bank: CASH_BANK, brokerage: CASH_BROK })
         });
         return r.ok;
@@ -2061,7 +2083,7 @@
             if (y) { hist[h.t] = y; got = true; }
           }
 
-          if (!got) {
+          if (!got && API_KEY) {
             try {
               const r = await fetchWithTimeout(`${FB}/stock/candle?symbol=${h.t}&resolution=D&count=365&token=${API_KEY}`, 5000);
               const d = await r.json();
@@ -2123,7 +2145,7 @@
         }
 
         let history = await fetchHist(ticker);
-        if (!history) {
+        if (!history && API_KEY) {
           setProg(50, `History not found, trying fallback...`, `Trying a secondary data source`);
           try {
             const r = await fetchWithRetry(`${FB}/stock/candle?symbol=${ticker}&resolution=D&count=365&token=${API_KEY}`, {}, 1);
@@ -2522,7 +2544,7 @@
       try {
         const r = await fetch('/api/weightings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders('weightings'),
           body: JSON.stringify(weightingsData)
         });
         return r.ok;
@@ -2828,6 +2850,9 @@
         const r = await fetch(`/api/auth?pwd=${encodeURIComponent(p)}&type=${type}`, { cache: 'no-store' });
         const d = await r.json();
         if (d.ok) {
+          // Unit Value shares the Holdings password/lock, so it shares the same "holdings" token.
+          if (type === 'holdings' || type === 'unitvalue') AUTH_TOKENS.holdings = d.token;
+          else if (type === 'weightings') AUTH_TOKENS.weightings = d.token;
           if (type === 'holdings') holdingsUnlocked = true;
           else if (type === 'weightings') weightingsUnlocked = true;
           else if (type === 'unitvalue') unitvalueUnlocked = true;
@@ -3019,28 +3044,44 @@
       const btn = document.getElementById("upsert-btn");
       if (btn) { btn._savedOldText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...'; btn.disabled = true; }
 
+      const isNewTicker = HOLD.findIndex(h => h.t === t) < 0;
       const i = HOLD.findIndex(h => h.t === t);
       if (i >= 0) { HOLD[i].sh = s; HOLD[i].ac = c; HOLD[i].s = sec; HOLD[i].d = d; }
       else HOLD.unshift({ t, n: t, s: sec, sh: s, ac: c, d });
 
       editIdx = null;
+      invalidatePos();
 
       updateSummary(true);
       await saveHoldings();
 
-      const ls = document.getElementById("ls"), app = document.getElementById("app");
-      if (ls) ls.style.display = "flex";
-      if (app) app.style.display = "none";
-
+      // Only the ticker that actually changed needs fresh data — no need to
+      // re-fetch quotes/history for every other holding, which used to force
+      // a full-screen reload on every single edit.
       try {
-        await loadAll();
+        await loadTickerQuiet(t, isNewTicker);
       } catch (e) {
-        console.error("Full refresh failed:", e);
+        console.error("Refresh for " + t + " failed:", e);
       } finally {
-        if (ls) ls.style.display = "none";
-        if (app) app.style.display = "block";
+        if (btn) { btn.innerHTML = btn._savedOldText || btn.innerHTML; btn.disabled = false; }
         render();
       }
+    }
+
+    // Fetches quote + history for one ticker only, without showing the
+    // full-screen loading overlay. Used after adding/editing a single holding.
+    async function loadTickerQuiet(ticker, needsHistory) {
+      try {
+        const r = await fetchWithTimeout(`/api/quote?ticker=${ticker}`, 6000);
+        const d = await r.json();
+        if (d && d.c > 0) { prices[ticker] = { c: d.c, pc: d.pc || d.c * .999, hi: d.h, lo: d.l }; invalidatePos(); }
+      } catch (e) { }
+
+      if (needsHistory || !hist[ticker]) {
+        const h = await fetchHist(ticker);
+        if (h) hist[ticker] = h;
+      }
+      _portHistDirty = true;
     }
     function rmv(e, i) {
       e.stopPropagation();
@@ -3447,6 +3488,7 @@
         document.getElementById("app").style.display = "block";
 
         render();
+        updateTabsFade();
 
       } catch (e) {
         pauseProg("Failed to load — check your API key");
@@ -3480,6 +3522,24 @@
       }, { passive: true });
     });
 
+    // The mobile tab strip hides its scrollbar (see .tabs::-webkit-scrollbar
+    // above) so there's otherwise no hint that Weightings/Unit Value exist
+    // off to the right. Show a fade on the trailing edge until scrolled to the end.
+    function updateTabsFade() {
+      const bar = document.querySelector('.nav-bottom');
+      const strip = document.querySelector('.nav-bottom .tabs');
+      if (!bar || !strip) return;
+      const atEnd = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 2;
+      bar.classList.toggle('has-more', !atEnd && strip.scrollWidth > strip.clientWidth);
+    }
+    // #app (and its nav) is display:none until boot() finishes loading data,
+    // so the first real measurement happens there — see updateTabsFade() call
+    // in boot(), below. Listener can be attached right away, before that.
+    (() => {
+      const strip = document.querySelector('.nav-bottom .tabs');
+      if (strip) strip.addEventListener('scroll', updateTabsFade, { passive: true });
+    })();
+    window.addEventListener('resize', updateTabsFade);
   </script>
 </body>
 

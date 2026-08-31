@@ -1,4 +1,5 @@
 const { createClient } = require('@vercel/kv');
+const { verify, bearerFrom } = require('./_lib/authToken');
 const kv = createClient({
   url: process.env.LION_REST_API_URL || process.env.KV_REST_API_URL,
   token: process.env.LION_REST_API_TOKEN || process.env.KV_REST_API_TOKEN
@@ -10,6 +11,7 @@ module.exports = async function handler(req, res) {
       const holdings = await kv.get('holdings') || [];
       res.status(200).json(holdings);
     } else if (req.method === 'POST') {
+      if (!verify(bearerFrom(req), 'holdings')) return res.status(401).json({ error: 'Unauthorized' });
       const holdings = req.body;
       await kv.set('holdings', holdings);
       res.status(200).json({ success: true });

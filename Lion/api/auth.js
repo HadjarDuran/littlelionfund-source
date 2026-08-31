@@ -1,20 +1,18 @@
-export const config = { runtime: 'edge' };
+const { sign } = require('./_lib/authToken');
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const pwd = searchParams.get('pwd') || '';
-  const type = searchParams.get('type') || 'holdings';
-  
+module.exports = async function handler(req, res) {
+  const pwd = (req.query.pwd || '');
+  const type = (req.query.type || 'holdings');
+  const scope = type === 'weightings' ? 'weightings' : 'holdings';
+
   // Separate env vars for separate locks. No hardcoded fallback: if the
   // env var isn't set, serverPwd is undefined and no submitted password
   // can match it, so auth fails closed instead of accepting a guessable default.
-  const serverPwd = type === 'weightings'
-    ? process.env.WEIGHTINGS_PWD
-    : process.env.HOLDINGS_PWD;
+  const serverPwd = scope === 'weightings' ? process.env.WEIGHTINGS_PWD : process.env.HOLDINGS_PWD;
 
   if (pwd && serverPwd && pwd === serverPwd) {
-    return new Response(JSON.stringify({ ok: true }));
+    res.status(200).json({ ok: true, token: sign(scope) });
   } else {
-    return new Response(JSON.stringify({ ok: false }), { status: 401 });
+    res.status(401).json({ ok: false });
   }
-}
+};
