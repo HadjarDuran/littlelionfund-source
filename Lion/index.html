@@ -1901,6 +1901,184 @@
   </svg>`;
     }
 
+    // ---- Portfolio-vs-benchmark chart (Performance tab) ----
+    // A separate function from drawChart/_renderChart on purpose: those are
+    // reused as single-series sparklines in a dozen places (dashboard,
+    // sectors, holdings list) and touching them risks regressing all of
+    // those. This is additive — only the Performance tab's main chart uses it.
+    const BENCH_COLOR = "#c09040", BENCH_LABEL = "S&P 500";
+    let benchHist = null, benchHistPromise = null;
+    function ensureBenchHist() {
+      if (benchHist || benchHistPromise) return benchHistPromise;
+      benchHistPromise = fetchHist('SPY').then(h => { benchHist = h || []; return benchHist; }).catch(() => { benchHist = []; return benchHist; });
+      return benchHistPromise;
+    }
+    // Carries the last known close forward onto `labels` so weekends/holiday
+    // gaps between the portfolio's date series and the benchmark's own
+    // history don't leave holes.
+    function alignSeriesToLabels(labels, srcHist) {
+      if (!srcHist || !srcHist.length) return labels.map(() => null);
+      let j = 0;
+      return labels.map(date => {
+        while (j < srcHist.length - 1 && srcHist[j + 1].date <= date) j++;
+        return srcHist[j].date <= date ? srcHist[j].close : null;
+      });
+    }
+    function toPctReturn(vals) {
+      const base = vals.find(v => v != null && v > 0);
+      if (base == null) return vals.map(() => null);
+      return vals.map(v => v == null ? null : +((v / base - 1) * 100).toFixed(3));
+    }
+
+    const pendingCompareCharts = new Map();
+    function drawCompareChart(el, labels, primaryData, benchDataRaw, primaryColor, primaryLabel, height, opts = {}) {
+      if (!el || !primaryData || !primaryData.length) return;
+      requestAnimationFrame(() => {
+        const W = el.getBoundingClientRect().width;
+        const args = [el, labels, primaryData, benchDataRaw, primaryColor, primaryLabel, height, opts];
+        if (W > 20) { _renderCompareChart(...args, W); return; }
+        const key = el.id || ('cc' + (gc++));
+        if (!el.id) el.id = key;
+        if (pendingCompareCharts.has(key)) return;
+        pendingCompareCharts.set(key, args);
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            const w = entry.contentRect.width;
+            if (w > 20) { ro.disconnect(); const p = pendingCompareCharts.get(key); pendingCompareCharts.delete(key); if (p) _renderCompareChart(...p, w); }
+          }
+        });
+        ro.observe(el);
+      });
+    }
+
+    function _renderCompareChart(el, labels, primaryData, benchDataRaw, primaryColor, primaryLabel, height, opts, W) {
+      const H = height, PL = 48, PR = 8, PT = 10, PB = 28, CW = W - PL - PR, CH = H - PT - PB;
+      const n = primaryData.length;
+      const primaryPct = toPctReturn(primaryData);
+      const benchPct = benchDataRaw ? toPctReturn(benchDataRaw) : null;
+      const hasBench = benchPct && benchPct.some(v => v != null);
+
+      const allVals = primaryPct.filter(v => v != null).concat(hasBench ? benchPct.filter(v => v != null) : []);
+      const mn = Math.min(...allVals), mx = Math.max(...allVals);
+      const rng = mx - mn || Math.abs(mn) * 0.02 || 1;
+      const pad = rng * 0.1;
+      const yLo = mn - pad, yHi = mx + pad, yRng = yHi - yLo || 1;
+      const xp = i => PL + (i / Math.max(n - 1, 1)) * CW;
+      const yp = v => PT + CH * (1 - (v - yLo) / yRng);
+
+      function pathFor(vals) {
+        let d = "", started = false;
+        vals.forEach((v, i) => { if (v == null) return; d += (started ? " L " : "M ") + xp(i).toFixed(1) + "," + yp(v).toFixed(1); started = true; });
+        return d;
+      }
+
+      let grid = "", ylbls = "";
+      for (let i = 0; i <= 4; i++) {
+        const v = yLo + yRng * i / 4, y = yp(v).toFixed(1);
+        grid += `<line x1="${PL}" y1="${y}" x2="${PL + CW}" y2="${y}" stroke="rgba(26,40,64,0.08)" stroke-width="1"/>`;
+        ylbls += `<text x="${PL - 5}" y="${(+y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="#8090b8" font-family="DM Sans,sans-serif">${v.toFixed(0)}%</text>`;
+      }
+      const zeroY = (yLo <= 0 && yHi >= 0) ? yp(0).toFixed(1) : null;
+
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      let xlbls = "";
+      const yBase = (PT + CH + 13).toFixed(1);
+      const minGapPx = 70;
+      let lastX = -999;
+      const candidates = [];
+      for (let i = 0; i < n; i++) {
+        const d = labels[i]; if (!d) continue;
+        const m = +d.split("-")[1];
+        const pm = i > 0 && labels[i - 1] ? +labels[i - 1].split("-")[1] : null;
+        if (i === 0 || i === n - 1 || m !== pm) candidates.push(i);
+      }
+      const maxLabels = Math.floor(CW / minGapPx);
+      const step = Math.ceil((candidates.length - 2) / Math.max(maxLabels - 2, 1));
+      candidates.filter((idx, ci) => ci === 0 || ci === candidates.length - 1 || (step <= 1 ? true : ci % step === 0)).forEach(i => {
+        const x = xp(i);
+        if (x - lastX < minGapPx && i !== 0 && i !== n - 1) return;
+        const [y, m] = labels[i].split("-").map(Number);
+        const anchor = i === 0 ? "start" : i === n - 1 ? "end" : "middle";
+        xlbls += `<text x="${x.toFixed(1)}" y="${yBase}" text-anchor="${anchor}" font-size="9" fill="#8090b8" font-family="DM Sans,sans-serif">${MONTHS[m - 1]} '${String(y).slice(2)}</text>`;
+        lastX = x;
+      });
+
+      const tfBadge = opts.timeframe ? `<text x="${(PL + CW).toFixed(1)}" y="${PT + 1}" text-anchor="end" font-size="9" fill="${primaryColor}" font-family="DM Sans,sans-serif" font-weight="600" opacity="0.7">${opts.timeframe}</text>` : "";
+      const chartId = "cc" + (gc++);
+
+      el.style.position = "relative";
+      el.innerHTML = `<svg id="${chartId}" width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;cursor:crosshair">
+    ${grid}
+    ${zeroY ? `<line x1="${PL}" y1="${zeroY}" x2="${PL + CW}" y2="${zeroY}" stroke="rgba(26,40,64,0.18)" stroke-width="1" stroke-dasharray="3,3"/>` : ""}
+    ${hasBench ? `<path d="${pathFor(benchPct)}" fill="none" stroke="${BENCH_COLOR}" stroke-width="1.75"/>` : ""}
+    <path d="${pathFor(primaryPct)}" fill="none" stroke="${primaryColor}" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>
+    ${ylbls}${xlbls}${tfBadge}
+    <rect id="${chartId}-sel" x="0" y="${PT}" width="0" height="${CH}" fill="${primaryColor}" opacity="0.1" style="display:none"/>
+    <line id="${chartId}-vl" x1="0" y1="${PT}" x2="0" y2="${PT + CH}" stroke="var(--accent, #2d4a3e)" stroke-width="1" stroke-dasharray="3,3" opacity="0" pointer-events="none"/>
+    <rect id="${chartId}-overlay" x="${PL}" y="${PT}" width="${CW}" height="${CH}" fill="transparent"/>
+  </svg>
+  <div id="${chartId}-legend" style="position:absolute;top:${PT}px;left:${PL + 8}px;display:flex;gap:14px;font-size:10px;color:var(--muted);font-weight:600;pointer-events:none">
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${primaryColor};display:inline-block"></span>${primaryLabel}</span>
+    ${hasBench ? `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${BENCH_COLOR};display:inline-block"></span>${BENCH_LABEL}</span>` : ""}
+  </div>
+  <div id="${chartId}-readout" style="display:none;position:absolute;left:${PL}px;right:${PR}px;bottom:2px;background:rgba(255,255,255,0.96);border:1px solid var(--border, #cddaef);border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.08)"></div>`;
+
+      const svg = document.getElementById(chartId);
+      const overlay = document.getElementById(chartId + "-overlay");
+      const sel = document.getElementById(chartId + "-sel");
+      const vl = document.getElementById(chartId + "-vl");
+      const readout = document.getElementById(chartId + "-readout");
+      let dragging = false, startIdx = null, hoverActive = false;
+
+      function idxFromClientX(clientX) {
+        const rect = svg.getBoundingClientRect();
+        const scale = W / rect.width;
+        const x = (clientX - rect.left) * scale;
+        const frac = Math.max(0, Math.min(1, (x - PL) / CW));
+        return Math.round(frac * (n - 1));
+      }
+      function fmtDate(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-").map(Number); return MONTHS[m - 1] + " " + d + ", " + y; }
+      function fmtPct(v) { return v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%"; }
+
+      function showRange(i0, i1) {
+        const a = Math.min(i0, i1), b = Math.max(i0, i1);
+        sel.style.display = "block";
+        sel.setAttribute("x", xp(a).toFixed(1));
+        sel.setAttribute("width", Math.max(1, xp(b) - xp(a)).toFixed(1));
+        if (a === b) { readout.style.display = "none"; return; }
+        const pA = primaryPct[a], pB = primaryPct[b];
+        const days = Math.round((new Date(labels[b]) - new Date(labels[a])) / 86400000);
+        let html = `<b>${fmtDate(labels[a])} → ${fmtDate(labels[b])}</b> <span style="color:var(--muted)">(${days}d)</span> &nbsp;·&nbsp; `
+          + `<span style="color:${primaryColor};font-weight:700">${primaryLabel} ${fmtPct(pB != null && pA != null ? pB - pA : null)}</span>`;
+        if (hasBench) {
+          const bA = benchPct[a], bB = benchPct[b];
+          const diff = (pB != null && pA != null && bA != null && bB != null) ? (pB - pA) - (bB - bA) : null;
+          html += ` &nbsp;·&nbsp; <span style="color:${BENCH_COLOR};font-weight:700">${BENCH_LABEL} ${fmtPct(bB != null && bA != null ? bB - bA : null)}</span>`
+            + ` &nbsp;·&nbsp; <span style="color:${diff == null ? 'var(--muted)' : diff >= 0 ? 'var(--green,#3fa874)' : 'var(--red,#c95f5f)'};font-weight:700">${diff == null ? '' : (diff >= 0 ? '+' : '') + diff.toFixed(2) + ' pts'}</span>`;
+        }
+        readout.style.display = "block";
+        readout.innerHTML = html;
+      }
+
+      overlay.addEventListener("pointerdown", e => {
+        dragging = true; startIdx = idxFromClientX(e.clientX);
+        overlay.setPointerCapture(e.pointerId);
+        vl.setAttribute("opacity", "0"); hoverActive = false;
+      });
+      overlay.addEventListener("pointermove", e => {
+        const idx = idxFromClientX(e.clientX);
+        if (dragging) { showRange(startIdx, idx); return; }
+        hoverActive = true;
+        vl.setAttribute("x1", xp(idx).toFixed(1)); vl.setAttribute("x2", xp(idx).toFixed(1)); vl.setAttribute("opacity", "0.5");
+        const pv = primaryPct[idx];
+        let tip = `${fmtDate(labels[idx])}  ${primaryLabel} ${fmtPct(pv)}`;
+        if (hasBench) tip += `  ·  ${BENCH_LABEL} ${fmtPct(benchPct[idx])}`;
+        showTip(e, encodeURIComponent(tip));
+      });
+      overlay.addEventListener("pointerup", () => { dragging = false; });
+      overlay.addEventListener("pointerleave", () => { if (!dragging) { hoverActive = false; vl.setAttribute("opacity", "0"); hideTip(); } });
+    }
+
     function drawDonut(elId, slices) {
       const el = document.getElementById(elId);
       if (!el) return;
@@ -2789,7 +2967,9 @@
       const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       function shortDate(ds) { if (!ds) return ""; const [y, m] = ds.split("-"); return MONTHS[+m - 1] + " '" + String(y).slice(2); }
       const tfStr = labels.length > 1 ? `${shortDate(labels[0])} – ${shortDate(labels[labels.length - 1])}` : "";
-      drawChart(mcEl, labels, data, color, 340, { dots: false, tight: false, yFmt: fK, timeframe: tfStr });
+      const benchAligned = alignSeriesToLabels(labels, benchHist);
+      const primaryLabel = isD ? detailT : "Portfolio";
+      drawCompareChart(mcEl, labels, data, benchAligned, color, primaryLabel, 340, { timeframe: tfStr });
 
       if (isD && raw.length > 0) {
         const wrap = document.getElementById("perf-table-wrap");
@@ -3541,6 +3721,10 @@
     }
 
     (async function boot() {
+      // Fire-and-forget: doesn't gate the loading screen. If it resolves
+      // after the user is already looking at Performance, re-render once so
+      // the benchmark line appears instead of only showing up on next visit.
+      ensureBenchHist().then(() => { if (curTab === 'performance') render(); });
       try {
         await loadData();
         await loadAll();
