@@ -5,12 +5,14 @@ export default async function handler(req) {
   const pwd = searchParams.get('pwd') || '';
   const type = searchParams.get('type') || 'holdings';
   
-  // Separate env vars for separate locks
-  const serverPwd = type === 'weightings' 
-    ? (process.env.WEIGHTINGS_PWD || 'lion123')
-    : (process.env.HOLDINGS_PWD || 'lion123');
-  
-  if (pwd === serverPwd) {
+  // Separate env vars for separate locks. No hardcoded fallback: if the
+  // env var isn't set, serverPwd is undefined and no submitted password
+  // can match it, so auth fails closed instead of accepting a guessable default.
+  const serverPwd = type === 'weightings'
+    ? process.env.WEIGHTINGS_PWD
+    : process.env.HOLDINGS_PWD;
+
+  if (pwd && serverPwd && pwd === serverPwd) {
     return new Response(JSON.stringify({ ok: true }));
   } else {
     return new Response(JSON.stringify({ ok: false }), { status: 401 });
