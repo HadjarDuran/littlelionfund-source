@@ -1417,6 +1417,39 @@
 
       table { min-width: 680px }
 
+      /* Detailed Positions Breakdown: a 10-column table doesn't work on a
+         phone even with horizontal scroll — the numbers that matter
+         (value, gain/loss, weight) end up hidden off-screen. Turn it into
+         stacked cards instead, using the same markup and a data-label
+         attribute per cell for the CSS-generated field labels. */
+      #pos-table { min-width: unset; width: 100%; }
+      #pos-table thead { display: none; }
+      #pos-table, #pos-table tbody { display: block; }
+      #pos-table tr.pos-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 14px;
+        padding: 12px 14px 14px;
+        margin-bottom: 8px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      #pos-table tr.pos-row td { display: block; padding: 0; border: none; text-align: left !important; }
+      #pos-table tr.pos-row td:first-child { grid-column: 1 / -1; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+      #pos-table tr.pos-row td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 2px;
+      }
+      #pos-table tr.pos-sector-row {
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+        padding: 10px 6px; pointer-events: none;
+      }
+      #pos-table tr.pos-sector-row td { display: inline; padding: 0; border: none; }
+      #pos-table tr.pos-sector-row td[colspan="2"] { display: none; }
+
       .hgrid { grid-template-columns: 1fr }
       .hrow { padding: 10px 12px }
       .hname { font-size: 12px }
@@ -1695,9 +1728,38 @@
       return r ? `${parseInt(r[1], 16)},${parseInt(r[2], 16)},${parseInt(r[3], 16)}` : "100,100,100";
     };
 
-    function openKeyModal() {
-      const k = prompt("Enter a backup Finnhub API key (optional):");
-      if (k && k.trim()) { API_KEY = k.trim(); localStorage.setItem("llf_key", API_KEY); location.reload(); }
+    let keyModalOpen = false;
+    function openKeyModal() { keyModalOpen = true; renderKeyModal(); }
+    function closeKeyModal() { keyModalOpen = false; renderKeyModal(); }
+    function saveKeyModal() {
+      const input = document.getElementById("key-modal-input");
+      const k = input ? input.value.trim() : "";
+      if (k) { API_KEY = k; localStorage.setItem("llf_key", API_KEY); location.reload(); }
+      else { closeKeyModal(); }
+    }
+    function renderKeyModal() {
+      let el = document.getElementById("key-modal");
+      if (!el) { el = document.createElement("div"); el.id = "key-modal"; document.body.appendChild(el); }
+      if (!keyModalOpen) { el.innerHTML = ""; return; }
+      el.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(45, 74, 62, 0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:500; animation: fadeIn .3s ease" onclick="closeKeyModal()"></div>
+      <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:501; padding:20px;">
+        <div style="background:var(--card); padding:32px; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,0.4); text-align:center; width:340px; max-width:100%; animation: scaleIn .3s ease both;">
+          <div style="width:64px; height:64px; background:var(--dim); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+            <i class="fa-solid fa-key" style="font-size:22px; color:var(--blue);"></i>
+          </div>
+          <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:22px; color:var(--accent); margin-bottom:8px;">Backup API Key</div>
+          <div style="font-size:13px; color:var(--muted); margin-bottom:20px; line-height:1.5">Optional. Used only as a fallback for chart history if the built-in source is unavailable. Stored on this device only.</div>
+          <input id="key-modal-input" type="text" class="fi" placeholder="Finnhub API key" autocomplete="off"
+            style="width:100%; text-align:center; margin-bottom:16px;" value="${API_KEY ? API_KEY.replace(/"/g, '&quot;') : ''}"
+            onkeydown="if(event.key==='Enter')saveKeyModal()"/>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="fcb" onclick="closeKeyModal()" style="margin:0; padding:0; height:44px;">Cancel</button>
+            <button class="fb" onclick="saveKeyModal()" style="margin:0; padding:0; height:44px;"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+          </div>
+        </div>
+      </div>`;
+      setTimeout(() => { const inp = document.getElementById("key-modal-input"); if (inp) inp.focus(); }, 10);
     }
 
     let gc = 0;
@@ -2281,7 +2343,7 @@
         <span><i class="fa-solid fa-table-list"></i>&nbsp;Detailed Positions Breakdown</span>
         <div style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0">Grouped by Sector</div>
       </div>
-      <div class="scroll-x" style="overflow-x:auto"><table>
+      <div class="scroll-x" style="overflow-x:auto"><table id="pos-table">
         <thead>
           <tr>
             <th style="text-align:left" onmouseover="showTip(event,'Ticker Symbol')" onmouseleave="hideTip()">Stock</th>
@@ -2337,11 +2399,11 @@
         const sGain = sVal - sCost;
         const sGainP = sCost ? (sGain / sCost * 100) : 0;
 
-        html += `<tr style="background:rgba(45,74,62,0.12);pointer-events:none;border-top:1px solid var(--accent);border-bottom:2px solid var(--accent)">
+        html += `<tr class="pos-sector-row" style="background:rgba(45,74,62,0.12);pointer-events:none;border-top:1px solid var(--accent);border-bottom:2px solid var(--accent)">
       <td colspan="5" style="font-weight:800;color:var(--accent);font-size:11px;padding:12px 15px;text-align:left;letter-spacing:0.8px">${sName.toUpperCase()}</td>
-      <td style="font-weight:700;color:var(--accent);font-size:12px">${fU(sVal)}</td>
-      <td style="font-weight:700;color:${cl(sGain)};font-size:12px">${fS(sGain)} (${fP(sGainP)})</td>
-      <td style="font-weight:700;color:var(--accent);font-size:12px">${+((sVal / tV) * 100).toFixed(2)}%</td>
+      <td data-label="Value" style="font-weight:700;color:var(--accent);font-size:12px">${fU(sVal)}</td>
+      <td data-label="Gain/Loss" style="font-weight:700;color:${cl(sGain)};font-size:12px">${fS(sGain)} (${fP(sGainP)})</td>
+      <td data-label="Weight" style="font-weight:700;color:var(--accent);font-size:12px">${+((sVal / tV) * 100).toFixed(2)}%</td>
       <td colspan="2"></td>
     </tr>`;
 
@@ -2362,18 +2424,18 @@
             if (old && old.close > 0) ttm = ((p.price - old.close) / old.close) * 100;
           }
 
-          html += `<tr onclick="openDetail('${p.t}')">
+          html += `<tr class="pos-row" onclick="openDetail('${p.t}')">
         <td><div class="tcell"><div class="d9" style="background:${p.color}"></div>
           <div><div class="tn">${p.t}</div><div class="tsub">${p.n}</div></div></div></td>
-        <td style="color:var(--muted);font-size:11px;text-align:right">${buyDate || "—"}</td>
-        <td style="color:var(--muted)">${p.sh}</td>
-        <td style="color:var(--muted)">${fU(p.ac)}</td>
-        <td style="font-weight:600">${p.price > 0 ? fU(p.price) : "—"}</td>
-        <td style="font-weight:700">${p.price > 0 ? fU(p.val) : "—"}</td>
-        <td style="color:${cl(p.pnl)};font-weight:600">${p.price > 0 ? fS(p.pnl) : "(" + fP(p.pnlP) + ")"}</td>
-        <td style="color:var(--muted)">${weight.toFixed(2)}%</td>
-        <td style="color:${annual === null ? "var(--muted)" : cl(annual)};font-weight:600">${p.price > 0 && annual !== null ? fP(annual) : "—"}</td>
-        <td style="color:${cl(ttm)};font-weight:600">${ttm !== 0 ? fP(ttm) : "—"}</td>
+        <td data-label="Purchase Date" style="color:var(--muted);font-size:11px;text-align:right">${buyDate || "—"}</td>
+        <td data-label="Shares" style="color:var(--muted)">${p.sh}</td>
+        <td data-label="Avg Cost" style="color:var(--muted)">${fU(p.ac)}</td>
+        <td data-label="Mkt Price" style="font-weight:600">${p.price > 0 ? fU(p.price) : "—"}</td>
+        <td data-label="Mkt Value" style="font-weight:700">${p.price > 0 ? fU(p.val) : "—"}</td>
+        <td data-label="Gain/Loss" style="color:${cl(p.pnl)};font-weight:600">${p.price > 0 ? fS(p.pnl) : "(" + fP(p.pnlP) + ")"}</td>
+        <td data-label="Weight" style="color:var(--muted)">${weight.toFixed(2)}%</td>
+        <td data-label="Annual %" style="color:${annual === null ? "var(--muted)" : cl(annual)};font-weight:600">${p.price > 0 && annual !== null ? fP(annual) : "—"}</td>
+        <td data-label="TTM %" style="color:${cl(ttm)};font-weight:600">${ttm !== 0 ? fP(ttm) : "—"}</td>
       </tr>`;
         });
       });
