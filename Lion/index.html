@@ -1617,7 +1617,10 @@
       "Financials": { color: "#0369a1" },
       "Energy + Utilities": { color: "#ea580c" },
     };
-    const UNITS = 4111.03;
+    // Was a hardcoded constant; now fetched from /api/units so it can
+    // change (new contributions/redemptions) without a code deploy. Keeps
+    // this default so nothing breaks before that endpoint is ever called.
+    let UNITS = 4111.03;
     const DOTC = ["#2563eb", "#7c3aed", "#d97706", "#059669", "#dc2626", "#0891b2", "#ea580c",
       "#0369a1", "#16a34a", "#9333ea", "#0284c7", "#b45309", "#be185d", "#15803d",
       "#1d4ed8", "#c2410c", "#0e7490", "#6d28d9", "#047857", "#b91c1c", "#ca8a04", "#0f766e"];
@@ -1652,11 +1655,12 @@
 
     async function loadData() {
       try {
-        const [holdingsRes, cashRes, weightingsRes, unitvalueRes] = await Promise.all([
+        const [holdingsRes, cashRes, weightingsRes, unitvalueRes, unitsRes] = await Promise.all([
           fetch('/api/holdings', { cache: 'no-store' }),
           fetch('/api/cash', { cache: 'no-store' }),
           fetch('/api/weightings', { cache: 'no-store' }),
-          fetch('/api/unitvalue', { cache: 'no-store' })
+          fetch('/api/unitvalue', { cache: 'no-store' }),
+          fetch('/api/units', { cache: 'no-store' })
         ]);
         isOffline = false;
         const holdingsData = await holdingsRes.json();
@@ -1668,6 +1672,7 @@
         if (!weightingsData || weightingsData.length === 0) weightingsData = [];
         const uvData = await unitvalueRes.json();
         if (Array.isArray(uvData) && uvData.length > 0) UNIT_HISTORY = uvData;
+        try { const unitsData = await unitsRes.json(); if (unitsData && unitsData.units > 0) UNITS = unitsData.units; } catch (e) { }
       } catch (error) {
         console.error('Failed to load data:', error);
         isOffline = true;
