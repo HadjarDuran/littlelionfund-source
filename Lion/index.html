@@ -1577,13 +1577,16 @@
         </div>
       </div>
       <div class="nav-bottom">
+        <!-- Holdings/Weightings/Unit Value are editing surfaces (password-
+             gated) meant for a fund manager at a computer, not something an
+             investor needs on a phone — deliberately left out of the mobile
+             tab bar. Dashboard's positions table and Sectors already cover
+             the read-only view of holdings/allocation on mobile. Desktop's
+             nav-top above is untouched and still has all six. -->
         <div class="tabs">
           <button class="tab active" onclick="setTab('dashboard')"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
           <button class="tab" onclick="setTab('sectors')"><i class="fa-solid fa-layer-group"></i> Sectors</button>
           <button class="tab" onclick="setTab('performance')"><i class="fa-solid fa-chart-line"></i> Performance</button>
-          <button class="tab" onclick="setTab('holdings')"><i class="fa-solid fa-briefcase"></i> Holdings</button>
-          <button class="tab" onclick="setTab('weightings')"><i class="fa-solid fa-scale-balanced"></i> Weightings</button>
-          <button class="tab" onclick="setTab('unitvalue')"><i class="fa-solid fa-coins"></i>&nbsp;Unit Value</button>
         </div>
       </div>
     </nav>
