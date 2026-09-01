@@ -3883,28 +3883,12 @@
     window.addEventListener('online', () => { isOffline = false; tc = 1; tick(); });
     window.addEventListener('offline', () => { isOffline = true; tick(); });
 
-    window.addEventListener('load', function() {
-        if (window.innerWidth > 768) return; 
-      const TABS = ['dashboard', 'sectors', 'performance', 'holdings', 'weightings', 'unitvalue'];
-      let touchStartX = 0, touchStartY = 0, startTarget = null;
-      const THRESHOLD = 55, MAX_Y = 80;
-      document.addEventListener('touchstart', e => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        startTarget = e.touches[0].target;
-      }, { passive: true });
-      document.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
-        if (Math.abs(dx) < THRESHOLD || dy > MAX_Y) return;
-        const scrollable = startTarget && startTarget.closest('.tabs, .hls, .scroll-x, [style*="overflow-x"]');
-        if (scrollable) return;
-        const cur = TABS.indexOf(curTab);
-        if (cur < 0) return;
-        if (dx < 0 && cur < TABS.length - 1) setTab(TABS[cur + 1]);
-        if (dx > 0 && cur > 0) setTab(TABS[cur - 1]);
-      }, { passive: true });
-    });
+    // Swipe-anywhere-to-switch-tabs used to live here (mobile only). Removed:
+    // it's a document-wide gesture with no way to know a drag started on a
+    // chart meant to be dragged (e.g. the Performance chart's drag-to-measure),
+    // so it kept hijacking chart interactions into tab switches. The tab bar
+    // itself is still fully usable by tapping — that was never dependent on
+    // this gesture.
 
     // The mobile tab strip hides its scrollbar (see .tabs::-webkit-scrollbar
     // above) so there's otherwise no hint that Weightings/Unit Value exist
