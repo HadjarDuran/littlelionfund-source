@@ -27,12 +27,17 @@ export default async function handler(req) {
     }
   } catch (e) {}
 
-  // Fall back to Yahoo Finance — range=max instead of a fixed lookback window
-  // so a ticker that misses Stooq still gets its full available history for
-  // the 5 Year / All Time chart views, not just the last ~400 days.
+  // Fall back to Yahoo Finance. Explicit period1/period2 rather than
+  // range=max: Yahoo's chart API silently collapses to coarser-than-daily
+  // candles (monthly/quarterly) for range=max on tickers with a long
+  // history, even with interval=1d set — range=max lets the server pick
+  // "appropriate" granularity for the full span instead of honoring the
+  // requested interval. An explicit bounded window is reliably daily.
   try {
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - 20 * 365 * 86400; // 20 years back — plenty for 5 Year / All Time
     const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=max&interval=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${from}&period2=${to}&interval=1d`,
       { headers: { 'User-Agent': 'Mozilla/5.0' } }
     );
     const json = await r.json();
