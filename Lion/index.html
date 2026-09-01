@@ -2775,6 +2775,8 @@
     function setPerfTF(tf) { perfTimeframe = tf; renderPerf(document.getElementById("content")); }
     function renderPerf(el) {
       const pos = getPos(), p = detailT ? pos.find(x => x.t === detailT) : null;
+      const canSinceBuy = !!(detailT && p?.d);
+      if (perfTimeframe === "Since Buy" && !canSinceBuy) perfTimeframe = "1 Year"; // e.g. left a stock's detail view, or that holding has no bought date set
       const arr = p && p.dayC >= 0 ? '<i class="fa-solid fa-caret-up"></i>' : '<i class="fa-solid fa-caret-down"></i>';
       const stats = p && p.price ? `<div class="pstats" style="flex-wrap:wrap;row-gap:8px;column-gap:16px;min-width:0;overflow:hidden">
     <div style="display:flex;flex-direction:column">
@@ -2799,6 +2801,7 @@
     </div>
   </div>`: "";
       const tfs = ["1 Month", "3 Months", "6 Months", "1 Year", "5 Years", "All Time"];
+      if (canSinceBuy) tfs.push("Since Buy");
       const tfBar = `<div style="display:flex;gap:4px;margin-left:auto">
     ${tfs.map(tf => `<button onclick="setPerfTF('${tf}')" style="padding:5px 11px;border-radius:6px;border:1px solid ${perfTimeframe === tf ? "var(--blue)" : "var(--border)"};background:${perfTimeframe === tf ? "var(--blue)" : "var(--dim)"};color:${perfTimeframe === tf ? "#fff" : "var(--muted)"};font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all .15s">${tf}</button>`).join("")}
   </div>`;
@@ -2824,7 +2827,9 @@
       const months = perfTimeframe in tfMonths ? tfMonths[perfTimeframe] : 12;
       const rawAll = isD ? (hist[detailT] || []).map(d => ({ date: d.date, v: +(d.close * (p?.sh || 1)).toFixed(2) })) : portHist.map(d => ({ date: d.date, v: d.value }));
       let raw;
-      if (months == null || !rawAll.length) {
+      if (perfTimeframe === "Since Buy" && canSinceBuy) {
+        raw = rawAll.filter(x => x.date >= p.d);
+      } else if (months == null || !rawAll.length) {
         raw = rawAll;
       } else {
         const cutoff = new Date(rawAll[rawAll.length - 1].date + "T00:00:00Z");
