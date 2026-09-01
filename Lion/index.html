@@ -2244,9 +2244,28 @@
 
     function buildPortHist() {
       if (!_portHistDirty) return;
+      // Different tickers' price feeds don't all update on the same day
+      // (a thinly-traded or recently-added holding can lag a day or two
+      // behind the rest). Summing only whatever's literally present on each
+      // date used to make the total plunge on any trailing date where one
+      // holding's feed hadn't caught up yet, even though nothing was
+      // actually sold. Forward-fill each holding's last known price onto
+      // every date in the combined calendar instead, so a lagging feed just
+      // holds its last value rather than silently dropping out of the sum.
+      const allDates = new Set();
+      HOLD.forEach(({ t }) => (hist[t] || []).forEach(({ date }) => allDates.add(date)));
+      const sortedDates = [...allDates].sort();
       const dm = {};
-      HOLD.forEach(({ t, sh }) => (hist[t] || []).forEach(({ date, close }) => { dm[date] = (dm[date] || 0) + close * sh; }));
-      portHist = Object.entries(dm).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, v: +value.toFixed(2), value: +value.toFixed(2) }));
+      HOLD.forEach(({ t, sh }) => {
+        const h = hist[t] || [];
+        if (!h.length) return;
+        let idx = 0;
+        sortedDates.forEach(date => {
+          while (idx < h.length - 1 && h[idx + 1].date <= date) idx++;
+          if (h[idx].date <= date) dm[date] = (dm[date] || 0) + h[idx].close * sh;
+        });
+      });
+      portHist = sortedDates.filter(d => dm[d] != null).map(date => ({ date, v: +dm[date].toFixed(2), value: +dm[date].toFixed(2) }));
       _portHistDirty = false;
     }
 
