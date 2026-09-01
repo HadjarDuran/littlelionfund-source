@@ -2324,10 +2324,17 @@
       const skipPromise = new Promise(res => { _skipHistoryResolve = res; });
 
       
-      let histDone = 0, histAborted = false;
-      async function loadHistSeq() {
-        for (const h of HOLD) {
-          if (histAborted) break;
+      // Fetches history for up to 4 holdings at a time (same concurrency
+      // already used for quotes above) instead of one at a time with a
+      // 200ms pause between each — that sequential-plus-sleep pattern was
+      // what made a ~25-holding portfolio take 10-15 seconds to load on
+      // every cold visit. Order of fetches is preserved (each of the 4
+      // workers pulls the next ticker off the same shared queue), only the
+      // concurrency changed.
+      let histDone = 0, histAborted = false, histIdx = 0;
+      async function historyWorker() {
+        while (histIdx < HOLD.length && !histAborted) {
+          const h = HOLD[histIdx++];
           let got = false;
 
           const s = await fetchHist(h.t);
@@ -2354,9 +2361,10 @@
           if (!histAborted) setProg(40 + Math.round(histDone / HOLD.length * 58),
             `History: ${histDone}/${HOLD.length}`,
             `${loadedTickers.length} loaded · ${failedTickers.length} failed`);
-
-          if (!histAborted && histDone < HOLD.length) await sleep(200);
         }
+      }
+      async function loadHistSeq() {
+        await Promise.all(Array.from({ length: Math.min(4, HOLD.length) }, historyWorker));
       }
 
       const winner = await Promise.race([loadHistSeq().then(() => "done"), skipPromise]);
