@@ -2152,7 +2152,7 @@
 
           if (!got && API_KEY) {
             try {
-              const r = await fetchWithTimeout(`${FB}/stock/candle?symbol=${h.t}&resolution=D&count=365&token=${API_KEY}`, 5000);
+              const r = await fetchWithTimeout(`${FB}/stock/candle?symbol=${h.t}&resolution=D&count=1825&token=${API_KEY}`, 5000);
               const d = await r.json();
               if (d && d.s === "ok" && d.t && d.t.length > 5) {
                 hist[h.t] = d.t.map((ts, j) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], close: d.c[j] }));
@@ -2786,7 +2786,7 @@
       <div style="font-weight:700"><b>${p.sh}</b></div>
     </div>
   </div>`: "";
-      const tfs = ["1 Month", "3 Months", "6 Months", "1 Year"];
+      const tfs = ["1 Month", "3 Months", "6 Months", "1 Year", "5 Years", "All Time"];
       const tfBar = `<div style="display:flex;gap:4px;margin-left:auto">
     ${tfs.map(tf => `<button onclick="setPerfTF('${tf}')" style="padding:5px 11px;border-radius:6px;border:1px solid ${perfTimeframe === tf ? "var(--blue)" : "var(--border)"};background:${perfTimeframe === tf ? "var(--blue)" : "var(--dim)"};color:${perfTimeframe === tf ? "#fff" : "var(--muted)"};font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all .15s">${tf}</button>`).join("")}
   </div>`;
@@ -2803,10 +2803,10 @@
       if (!detailT) updatePerfGrid(pos);
       const mcEl = document.getElementById("mc"); if (!mcEl) return;
       const isD = !!detailT;
-      const tfDays = { "1 Month": 22, "3 Months": 66, "6 Months": 132, "1 Year": 365 };
+      const tfDays = { "1 Month": 22, "3 Months": 66, "6 Months": 132, "1 Year": 365, "5 Years": 1825, "All Time": Infinity };
       const days = tfDays[perfTimeframe] || 365;
       const rawAll = isD ? (hist[detailT] || []).map(d => ({ date: d.date, v: +(d.close * (p?.sh || 1)).toFixed(2) })) : portHist.map(d => ({ date: d.date, v: d.value }));
-      const raw = rawAll.slice(-days);
+      const raw = days === Infinity ? rawAll : rawAll.slice(-days);
       const labels = raw.map(x => x.date), data = raw.map(x => x.v);
       if (!data.length) { mcEl.innerHTML = `<div style="height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;letter-spacing:.5px">No chart data available</div>`; return; }
       const color = isD ? (SM[p?.s] || { color: "#2563eb" }).color : "#2563eb";

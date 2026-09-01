@@ -27,12 +27,12 @@ export default async function handler(req) {
     }
   } catch (e) {}
 
-  // Fall back to Yahoo Finance
+  // Fall back to Yahoo Finance — range=max instead of a fixed lookback window
+  // so a ticker that misses Stooq still gets its full available history for
+  // the 5 Year / All Time chart views, not just the last ~400 days.
   try {
-    const to = Math.floor(Date.now() / 1000);
-    const from = to - 400 * 86400;
     const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${from}&period2=${to}&interval=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=max&interval=1d`,
       { headers: { 'User-Agent': 'Mozilla/5.0' } }
     );
     const json = await r.json();
