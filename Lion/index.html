@@ -2256,11 +2256,12 @@
       HOLD.forEach(({ t }) => (hist[t] || []).forEach(({ date }) => allDates.add(date)));
       const sortedDates = [...allDates].sort();
       const dm = {};
-      HOLD.forEach(({ t, sh }) => {
+      HOLD.forEach(({ t, sh, d: bought }) => {
         const h = hist[t] || [];
         if (!h.length) return;
         let idx = 0;
         sortedDates.forEach(date => {
+          if (bought && date < bought) return; // not held yet — don't project current shares onto pre-purchase history
           while (idx < h.length - 1 && h[idx + 1].date <= date) idx++;
           if (h[idx].date <= date) dm[date] = (dm[date] || 0) + h[idx].close * sh;
         });
@@ -2731,11 +2732,22 @@
 
         const secChartEl = document.getElementById(`sec_chart_${si}`);
         if (secChartEl && sectorPositions.length > 0) {
+          // Same forward-fill treatment as buildPortHist(): summing only
+          // whatever's literally present per date made the sector total
+          // zigzag whenever one holding's trading dates didn't line up
+          // exactly with the rest (it'd drop out of the sum, then reappear).
           const combinedData = {};
+          const allDates = new Set();
+          sectorPositions.forEach(p => (hist[p.t] || []).slice(-22).forEach(({ date }) => allDates.add(date)));
+          const sortedSecDates = [...allDates].sort();
           sectorPositions.forEach(p => {
-            const sm = getStkMonth(p.t, p.sh);
-            sm.labels.forEach((l, idx) => {
-              combinedData[l] = (combinedData[l] || 0) + sm.data[idx];
+            const h = (hist[p.t] || []).slice(-22);
+            if (!h.length) return;
+            let idx = 0;
+            sortedSecDates.forEach(date => {
+              if (p.d && date < p.d) return;
+              while (idx < h.length - 1 && h[idx + 1].date <= date) idx++;
+              if (h[idx].date <= date) combinedData[date] = (combinedData[date] || 0) + h[idx].close * p.sh;
             });
           });
           const sorted = Object.entries(combinedData).sort(([a], [b]) => a.localeCompare(b));
