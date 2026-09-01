@@ -624,6 +624,10 @@
       gap: 12px
     }
 
+    .sg-asof {
+      padding: 10px 28px 0;
+    }
+
     .sc {
       background: var(--card);
       border-radius: 12px;
@@ -1397,6 +1401,7 @@
         gap: 8px;
       }
       .sg > div:last-child { grid-column: 1 / -1 }
+      .sg-asof { padding: 8px 12px 0; }
       .sc { padding: 12px 14px }
       .sv { font-size: 17px }
 
@@ -1557,9 +1562,9 @@
           <button class="tab" onclick="setTab('unitvalue')"><i class="fa-solid fa-coins"></i>&nbsp;Unit Value</button>
         </div>
         <div class="nr">
-          <span id="next-update" style="font-size:11px;font-weight:700;letter-spacing:0.5px;white-space:nowrap;padding-right:14px;border-right:1px solid rgba(0,0,0,0.1)">Updating in 02:00</span>
-          <button class="kbtn" onclick="openKeyModal()"><i class="fa-solid fa-key"></i></button>
-          <button class="fb" onclick="saveAllDataUI()" style="width:auto;padding:0 16px;background:var(--green);font-size:11px"><i class="fa-solid fa-cloud-arrow-up"></i>&nbsp;Save All</button>
+          <span id="next-update" style="display:none;font-size:11px;font-weight:700;letter-spacing:0.5px;white-space:nowrap;padding-right:14px;border-right:1px solid rgba(0,0,0,0.1)">Updating in 02:00</span>
+          <button id="key-btn" class="kbtn" onclick="openKeyModal()" style="display:none"><i class="fa-solid fa-key"></i></button>
+          <button id="save-all-btn" class="fb" onclick="saveAllDataUI()" style="display:none;width:auto;padding:0 16px;background:var(--green);font-size:11px"><i class="fa-solid fa-cloud-arrow-up"></i>&nbsp;Save All</button>
         </div>
       </div>
       <div class="nav-bottom">
@@ -1573,7 +1578,7 @@
         </div>
       </div>
     </nav>
-    <div id="data-asof" class="sg-asof" style="font-size:11px;color:var(--muted);margin:0 0 10px;padding:0 2px;display:none;align-items:center;gap:6px">Data as of —</div>
+    <div id="data-asof" class="sg-asof" style="font-size:11px;color:var(--muted);margin:0 0 6px;display:none;align-items:center;gap:6px">Data as of —</div>
     <div class="sg">
       <div class="sc" style="animation:slideUp .2s .02s ease both">
         <div class="sl"><i class="fa-solid fa-wallet"></i>&nbsp;Portfolio Value</div>
@@ -2119,18 +2124,22 @@
     function tick() {
       tc--;
       if (tc <= 0 && !isOffline) { tc = 120; loadAll(true).catch(() => { isOffline = true; tick(); }); }
+      // The countdown itself ("Updating in 01:34") is dev-facing noise —
+      // nobody checking on the fund needs to know when the next silent
+      // refresh fires. Only surface this control when there's something an
+      // investor would actually want to know: the connection is down.
       const el = document.getElementById("next-update");
       if (el) {
         if (isOffline || !navigator.onLine) {
           el.textContent = "Offline";
           el.style.color = "var(--red)";
+          el.style.display = "inline";
         } else {
-          const m = Math.floor(tc / 60), s = tc % 60;
-          el.textContent = `Updating in ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-          el.style.color = "var(--green)";
+          el.style.display = "none";
         }
       }
       renderDataAsOf();
+      renderNavControls();
     }
 
     async function loadAll(silent = false) {
@@ -2344,6 +2353,7 @@
       const summary = document.querySelector('.sg');
       if (summary) summary.style.display = curTab === 'dashboard' ? 'grid' : 'none';
       renderDataAsOf();
+      renderNavControls();
 
       if (shouldSave) {
         saveHoldings();
@@ -2376,6 +2386,16 @@
         el.style.color = 'var(--muted)';
         el.innerHTML = `Data as of —`;
       }
+    }
+    // The key (API key backup) and Save All buttons are manager tools with
+    // nothing for an investor to do with them — Save All doesn't even work
+    // until a tab is unlocked (it fails with an Unauthorized error). Only
+    // show them once a manager has actually unlocked something to edit.
+    function renderNavControls() {
+      const editing = holdingsUnlocked || weightingsUnlocked || unitvalueUnlocked;
+      const keyBtn = document.getElementById('key-btn'), saveBtn = document.getElementById('save-all-btn');
+      if (keyBtn) keyBtn.style.display = editing ? 'flex' : 'none';
+      if (saveBtn) saveBtn.style.display = editing ? 'flex' : 'none';
     }
 
     function setTab(t) {
