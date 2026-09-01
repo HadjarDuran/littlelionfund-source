@@ -1943,6 +1943,152 @@
   </svg>`;
     }
 
+    // Drag-to-measure overlay for the Performance chart — press and drag
+    // across the chart, release, and see the $ / % change and date span
+    // between the two points (TradingView's "measure tool" pattern).
+    // Deliberately kept out of _renderChart/drawChart entirely: this is a
+    // separate layer appended on top of the SVG after the fact, so the
+    // chart's own rendering and look are completely untouched whether or
+    // not this attaches, and this can be removed cleanly without touching
+    // chart code at all.
+    //
+    // PL/PR/PT/PB and the y-scale formula below intentionally mirror
+    // _renderChart's internals (duplicated rather than shared, to avoid
+    // modifying that function) — keep them in sync if _renderChart's
+    // layout constants ever change.
+    function attachDragMeasure(el, labels, data, { tight = false } = {}) {
+      if (!el || !data || data.length < 2) return;
+      let tries = 0;
+      const poll = setInterval(() => {
+        const svg = el.querySelector('svg');
+        if (svg) { clearInterval(poll); wireMeasure(el, svg, labels, data, tight); return; }
+        if (++tries > 100) clearInterval(poll); // chart never rendered (e.g. navigated away) — give up quietly
+      }, 30);
+    }
+
+    function wireMeasure(container, svg, labels, data, tight) {
+      const vb = (svg.getAttribute('viewBox') || '').split(' ').map(Number);
+      const W = vb[2], H = vb[3];
+      if (!W || !H) return;
+      const PL = 48, PR = 8, PT = 10, PB = tight ? 20 : 28, CW = W - PL - PR, CH = H - PT - PB;
+      const mn = Math.min(...data), mx = Math.max(...data);
+      const rng = mx - mn || Math.abs(mn) * 0.02 || 1;
+      const pd = tight ? rng * 0.05 : rng * 0.1;
+      const yLo = mn - pd, yHi = mx + pd, yRng = yHi - yLo;
+      const xp = i => PL + (i / Math.max(data.length - 1, 1)) * CW;
+      const yp = v => PT + CH * (1 - (v - yLo) / yRng);
+
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const g = document.createElementNS(svgNS, 'g');
+      svg.appendChild(g);
+
+      // pointer-events:none on every overlay shape so they're purely visual
+      // and never steal the existing per-point hover tooltip's mouseover —
+      // that keeps working exactly as before, even under an active selection.
+      const band = document.createElementNS(svgNS, 'rect');
+      band.setAttribute('y', PT); band.setAttribute('height', CH);
+      band.setAttribute('fill', 'rgba(94,127,208,0.22)');
+      band.setAttribute('opacity', '0');
+      band.setAttribute('pointer-events', 'none');
+      g.appendChild(band);
+      function mkGuideLine() {
+        const l = document.createElementNS(svgNS, 'line');
+        l.setAttribute('y1', PT); l.setAttribute('y2', PT + CH);
+        l.setAttribute('stroke', '#5e7fd0'); l.setAttribute('stroke-width', '1.5');
+        l.setAttribute('stroke-dasharray', '4,3'); l.setAttribute('opacity', '0');
+        l.setAttribute('pointer-events', 'none');
+        g.appendChild(l);
+        return l;
+      }
+      function mkDot() {
+        const c = document.createElementNS(svgNS, 'circle');
+        c.setAttribute('r', '4'); c.setAttribute('fill', '#5e7fd0');
+        c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '2');
+        c.setAttribute('opacity', '0');
+        c.setAttribute('pointer-events', 'none');
+        g.appendChild(c);
+        return c;
+      }
+      const lineA = mkGuideLine(), lineB = mkGuideLine();
+      const dotA = mkDot(), dotB = mkDot();
+
+      const label = document.createElement('div');
+      label.style.cssText = 'position:absolute;pointer-events:none;background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;transition:opacity .1s;z-index:50;line-height:1.4';
+      container.style.position = 'relative';
+      container.appendChild(label);
+
+      function idxFromClientX(clientX) {
+        const rect = svg.getBoundingClientRect();
+        const px = (clientX - rect.left) * (W / rect.width);
+        const frac = (px - PL) / CW;
+        return Math.max(0, Math.min(data.length - 1, Math.round(frac * (data.length - 1))));
+      }
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      function fmtDate(ds) { const [y, m, d] = ds.split('-').map(Number); return `${MONTHS[m - 1]} ${d}, ${y}`; }
+
+      let dragging = false, startIdx = null, moved = false;
+
+      function paint(iA, iB) {
+        const lo = Math.min(iA, iB), hi = Math.max(iA, iB);
+        const x0 = xp(lo), x1 = xp(hi);
+        band.setAttribute('x', x0); band.setAttribute('width', Math.max(x1 - x0, 0));
+        band.setAttribute('opacity', hi === lo ? '0' : '1');
+        lineA.setAttribute('x1', x0); lineA.setAttribute('x2', x0); lineA.setAttribute('opacity', '0.8');
+        lineB.setAttribute('x1', x1); lineB.setAttribute('x2', x1); lineB.setAttribute('opacity', '0.8');
+        dotA.setAttribute('cx', x0); dotA.setAttribute('cy', yp(data[lo])); dotA.setAttribute('opacity', '1');
+        dotB.setAttribute('cx', x1); dotB.setAttribute('cy', yp(data[hi])); dotB.setAttribute('opacity', '1');
+
+        // Always chronological (earlier -> later), matching the dates shown,
+        // regardless of which direction the user actually dragged.
+        const startV = data[lo], endV = data[hi];
+        const chg = endV - startV;
+        const pct = startV ? (chg / startV) * 100 : 0;
+        const sign = chg >= 0 ? '+' : '−';
+        const swatch = chg >= 0 ? '#8fe0b6' : '#f0a8a8';
+        label.innerHTML = `<span style="color:${swatch}">${sign} $${Math.abs(chg).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${chg >= 0 ? '+' : ''}${pct.toFixed(2)}%)</span><br><span style="font-weight:400;opacity:.85;font-size:11px">${fmtDate(labels[lo])} → ${fmtDate(labels[hi])}</span>`;
+        label.style.opacity = '1';
+
+        const rect = svg.getBoundingClientRect();
+        const scaleX = rect.width / W;
+        const midX = ((x0 + x1) / 2) * scaleX;
+        let leftPx = midX - label.offsetWidth / 2;
+        leftPx = Math.max(4, Math.min(rect.width - label.offsetWidth - 4, leftPx));
+        label.style.left = leftPx + 'px';
+        label.style.top = '4px';
+      }
+
+      function clearSel() {
+        band.setAttribute('opacity', '0');
+        lineA.setAttribute('opacity', '0'); lineB.setAttribute('opacity', '0');
+        dotA.setAttribute('opacity', '0'); dotB.setAttribute('opacity', '0');
+        label.style.opacity = '0';
+      }
+
+      svg.style.touchAction = 'none';
+      svg.addEventListener('pointerdown', e => {
+        dragging = true; moved = false;
+        startIdx = idxFromClientX(e.clientX);
+        svg.setPointerCapture(e.pointerId);
+        hideTip(); hideCursorDot(svg.id); // don't let the existing hover tooltip fight the drag readout for attention
+        paint(startIdx, startIdx);
+        e.preventDefault();
+      });
+      svg.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const curIdx = idxFromClientX(e.clientX);
+        if (curIdx !== startIdx) moved = true;
+        hideTip(); hideCursorDot(svg.id);
+        paint(startIdx, curIdx);
+      });
+      function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        if (!moved) { clearSel(); startIdx = null; }
+      }
+      svg.addEventListener('pointerup', endDrag);
+      svg.addEventListener('pointercancel', () => { dragging = false; clearSel(); });
+    }
+
     function drawDonut(elId, slices) {
       const el = document.getElementById(elId);
       if (!el) return;
@@ -2927,6 +3073,7 @@
       function shortDate(ds) { if (!ds) return ""; const [y, m] = ds.split("-"); return MONTHS[+m - 1] + " '" + String(y).slice(2); }
       const tfStr = labels.length > 1 ? `${shortDate(labels[0])} – ${shortDate(labels[labels.length - 1])}` : "";
       drawChart(mcEl, labels, data, color, 340, { dots: false, tight: false, yFmt: fK, timeframe: tfStr });
+      attachDragMeasure(mcEl, labels, data, { tight: false });
 
       if (isD && raw.length > 0) {
         const wrap = document.getElementById("perf-table-wrap");
