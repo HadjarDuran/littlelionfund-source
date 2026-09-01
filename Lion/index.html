@@ -1683,6 +1683,36 @@
       }
     }
 
+    // A plain browser reload re-runs the whole boot sequence, including the
+    // slow part: fetching every holding's quote and then its full price
+    // history one at a time. Cache the small, fast-to-render fields (not
+    // the multi-year price history — that can run into the low-MB range
+    // across ~25 tickers and risks hitting localStorage's quota) so a quick
+    // reload can paint the Dashboard instantly from the last successful
+    // load, then refresh for real in the background. Browsers don't expose
+    // "was this reload a hard reload" to JS, so there's no way to gate on
+    // that literally — a genuine hard reload (or Reset Site Data, or private
+    // browsing) just clears the cache along with everything else and falls
+    // back to the full loading screen, which is the same outcome in practice.
+    const SNAPSHOT_KEY = 'llf_snapshot_v1';
+    const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
+    function saveSnapshotCache() {
+      try {
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+          ts: Date.now(), HOLD, CASH_BANK, CASH_BROK, prices, weightingsData, UNIT_HISTORY, UNITS
+        }));
+      } catch (e) { /* storage full/unavailable/private-browsing — just skip caching */ }
+    }
+    function loadSnapshotCache() {
+      try {
+        const raw = localStorage.getItem(SNAPSHOT_KEY);
+        if (!raw) return null;
+        const snap = JSON.parse(raw);
+        if (!snap || typeof snap.ts !== 'number' || Date.now() - snap.ts > SNAPSHOT_TTL_MS) return null;
+        return snap;
+      } catch (e) { return null; }
+    }
+
     function authHeaders(scope) {
       const h = { 'Content-Type': 'application/json' };
       if (AUTH_TOKENS[scope]) h['Authorization'] = 'Bearer ' + AUTH_TOKENS[scope];
@@ -2188,6 +2218,7 @@
       }
       isOffline = false;
       lastDataUpdate = new Date();
+      saveSnapshotCache();
       updateSummary(true);
       render();
       if (!timer) timer = setInterval(tick, 1000);
@@ -3627,6 +3658,30 @@
     }
 
     (async function boot() {
+      const snap = loadSnapshotCache();
+      if (snap) {
+        // Instant path: paint from the last successful load instead of
+        // blocking on a fresh sequential fetch of every ticker.
+        HOLD = snap.HOLD || [];
+        CASH_BANK = snap.CASH_BANK || 0;
+        CASH_BROK = snap.CASH_BROK || 0;
+        prices = snap.prices || {};
+        weightingsData = snap.weightingsData || [];
+        if (Array.isArray(snap.UNIT_HISTORY) && snap.UNIT_HISTORY.length) UNIT_HISTORY = snap.UNIT_HISTORY;
+        if (snap.UNITS > 0) UNITS = snap.UNITS;
+        lastDataUpdate = new Date(snap.ts);
+        invalidatePos();
+        document.getElementById("ls").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        render();
+        updateTabsFade();
+        // hist (multi-year price series, needed for the Performance/Sectors
+        // charts) isn't cached — refresh for real in the background so
+        // those charts populate within a couple seconds instead of staying
+        // on stale/empty data indefinitely.
+        loadAll(true).catch(() => { isOffline = true; tick(); });
+        return;
+      }
       try {
         await loadData();
         await loadAll();
