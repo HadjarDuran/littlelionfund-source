@@ -1573,6 +1573,7 @@
         </div>
       </div>
     </nav>
+    <div id="data-asof" class="sg-asof" style="font-size:11px;color:var(--muted);margin:0 0 10px;padding:0 2px;display:none;align-items:center;gap:6px">Data as of —</div>
     <div class="sg">
       <div class="sc" style="animation:slideUp .2s .02s ease both">
         <div class="sl"><i class="fa-solid fa-wallet"></i>&nbsp;Portfolio Value</div>
@@ -1630,6 +1631,7 @@
     let HOLD = [], CASH_BANK = 0, CASH_BROK = 0;
     let prices = {}, hist = {}, portHist = [];
     let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false;
+    let lastDataUpdate = null; // when loadAll() last completed successfully — the "Data as of" trust stamp on the Dashboard
     let _posCache = null, _posCacheKey = "", _portHistDirty = true;
     let weightingsData = [];
     function toggleAllocView() {
@@ -2098,6 +2100,7 @@
           el.style.color = "var(--green)";
         }
       }
+      renderDataAsOf();
     }
 
     async function loadAll(silent = false) {
@@ -2184,6 +2187,7 @@
         if (app) app.style.display = "block";
       }
       isOffline = false;
+      lastDataUpdate = new Date();
       updateSummary(true);
       render();
       if (!timer) timer = setInterval(tick, 1000);
@@ -2308,10 +2312,38 @@
 
       const summary = document.querySelector('.sg');
       if (summary) summary.style.display = curTab === 'dashboard' ? 'grid' : 'none';
+      renderDataAsOf();
 
       if (shouldSave) {
         saveHoldings();
         saveCash();
+      }
+    }
+    function fmtAsOf(d) {
+      if (!d) return "—";
+      const now = new Date();
+      const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      if (d.toDateString() === now.toDateString()) return `today at ${time}`;
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${MONTHS[d.getMonth()]} ${d.getDate()} at ${time}`;
+    }
+    // The cheapest, highest-value trust signal for an investor checking the
+    // fund: an honest, unmissable "when was this actually last refreshed" —
+    // not the live countdown (that's when the *next* refresh fires), and not
+    // silently stale if the connection drops.
+    function renderDataAsOf() {
+      const el = document.getElementById('data-asof');
+      if (!el) return;
+      el.style.display = curTab === 'dashboard' ? 'flex' : 'none';
+      if (isOffline) {
+        el.style.color = 'var(--red)';
+        el.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Connection lost — showing data as of ${fmtAsOf(lastDataUpdate)}`;
+      } else if (lastDataUpdate) {
+        el.style.color = 'var(--muted)';
+        el.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--green)"></i> Data as of ${fmtAsOf(lastDataUpdate)}`;
+      } else {
+        el.style.color = 'var(--muted)';
+        el.innerHTML = `Data as of —`;
       }
     }
 
