@@ -3693,11 +3693,17 @@
         </div>
       </div>`;
 
+      // Color each chart by its own start-to-end direction — same green/red
+      // convention the stat cards above already use (Current Unit Value's
+      // arrow, Total Return) — instead of a color hardcoded to red
+      // regardless of whether the fund was actually up or down over that
+      // stretch.
+      const trendColor = vals => (vals[vals.length - 1] >= vals[0] ? '#3fa874' : '#c95f5f');
       requestAnimationFrame(() => {
         const itdEl = document.getElementById('uv-chart-itd');
         const ttmEl = document.getElementById('uv-chart-ttm');
-        if (itdEl) drawChart(itdEl, isoLabels, uVals, '#c0392b', 240, { dots: false, tight: false, yFmt: v => '$'+v.toFixed(0) });
-        if (ttmEl) drawChart(ttmEl, ttmLabels, ttmVals, '#c0392b', 240, { dots: false, tight: false, yFmt: v => '$'+v.toFixed(0) });
+        if (itdEl) drawChart(itdEl, isoLabels, uVals, trendColor(uVals), 240, { dots: false, tight: false, yFmt: v => '$'+v.toFixed(0) });
+        if (ttmEl) drawChart(ttmEl, ttmLabels, ttmVals, trendColor(ttmVals), 240, { dots: false, tight: false, yFmt: v => '$'+v.toFixed(0) });
       });
       if (uvEditIdx !== null) {
         const r = UNIT_HISTORY[uvEditIdx];
