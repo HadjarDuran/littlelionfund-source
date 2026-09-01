@@ -1357,6 +1357,11 @@
     @media (max-width: 768px) {
       html, body { font-size: 12px }
 
+      /* Any input under 16px makes iOS Safari zoom the whole page in on
+         focus (a well-documented WebKit quirk) — the password field, ticker
+         search, and Weightings/Unit Value entry fields all share this class. */
+      .fi { font-size: 16px }
+
       .nav-top {
         padding: 8px 14px;
         height: auto;
@@ -1386,8 +1391,12 @@
       }
       .tabs::-webkit-scrollbar { display: none }
       .tab {
+        /* min-height (not just padding) so the tap target reaches Apple/
+           Material's ~44-48px guidance regardless of the label's font-size —
+           width is fine to stay compact since the strip already scrolls. */
+        min-height: 44px;
         padding: 10px 12px;
-        font-size: 9px;
+        font-size: 10px;
         letter-spacing: 0.7px;
         white-space: nowrap;
         flex-shrink: 0;
@@ -1504,7 +1513,7 @@
       .nr .fb { font-size: 10px; padding: 0 10px }
       .nr .kbtn { padding: 0 8px }
       #next-update { font-size: 9px !important; padding-right: 8px !important }
-      .tab { padding: 10px 9px; font-size: 8.5px }
+      .tab { min-height: 44px; padding: 10px 9px; font-size: 9px }
     }
     @media (min-width: 769px) {
       .ls-wrap { width: 420px }
@@ -3048,7 +3057,10 @@
     ${tfBar}
   </div>
   <div class="chdiv">
-    <div class="clbl"><i class="fa-solid fa-chart-line" style="margin-right:6px"></i>${detailT ? "Position Value" : "Total Equity Value"} — ${perfTimeframe}</div>
+    <div class="clbl" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <span><i class="fa-solid fa-chart-line" style="margin-right:6px"></i>${detailT ? "Position Value" : "Total Equity Value"} — ${perfTimeframe}</span>
+      <span style="font-size:9px;letter-spacing:0.3px;text-transform:none;font-weight:500;color:var(--muted);opacity:0.75"><i class="fa-solid fa-arrows-left-right" style="margin-right:4px"></i>Drag to compare two points</span>
+    </div>
     <div class="chart-div" id="mc" style="height:340px"></div>
   </div>
   ${!detailT ? `<div class="sgrid" id="sg"></div>` : `<div id="perf-table-wrap"></div>`}`;
