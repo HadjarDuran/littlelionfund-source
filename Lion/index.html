@@ -1414,6 +1414,13 @@
       .sc { padding: 12px 14px }
       .sv { font-size: 17px }
 
+      /* The Position Value stat row (Price/Value/P&L/Today/Shares) on a
+         stock's detail view never got the same mobile size bump as the
+         Dashboard's stat cards above — it stayed at its 12px desktop size,
+         which read as the whole page shrinking when navigating into a
+         stock from the Dashboard. */
+      .pstats { font-size: 15px; gap: 14px 22px }
+
       #content { padding: 10px 12px 52px }
 
       .dg { grid-template-columns: 1fr }
