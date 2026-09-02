@@ -969,6 +969,16 @@
       color: var(--text)
     }
 
+    .tf-btn {
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
     .chdiv {
       background: var(--card);
       border-radius: 14px;
@@ -1420,6 +1430,16 @@
          which read as the whole page shrinking when navigating into a
          stock from the Dashboard. */
       .pstats { font-size: 15px; gap: 14px 22px }
+
+      /* The Performance chart's timeframe row (1 Month..Since Buy, up to 7
+         buttons) had no wrap or scroll on mobile — it just overflowed off
+         the right edge of the screen, clipping the last button or two.
+         Wrap it, and drop margin-left:auto (which only made sense pushing
+         the row right in a single line next to the title) so it uses the
+         full width once wrapped. Tap targets bumped toward the 44px
+         guidance too — they were only ~24px tall before. */
+      .tf-bar { flex-wrap: wrap; margin-left: 0 !important; width: 100% }
+      .tf-btn { min-height: 40px; padding: 8px 10px; flex: 1 1 auto; text-align: center }
 
       #content { padding: 10px 12px 52px }
 
@@ -2314,43 +2334,51 @@
         if (app) app.style.display = "none";
       }
       loadedTickers = []; failedTickers = [];
-      if (!silent) setProg(0, "Fetching quotes…", "");
+      if (!silent) {
+        setProg(0, "Loading fund data…", "");
+        const tickerBox = document.getElementById("ls-tickers");
+        if (tickerBox) tickerBox.style.display = "flex";
+      }
 
-      let qOk = 0;
+      // Quotes and history used to run as two fully sequential phases — all
+      // quotes had to finish before history even started — even though
+      // neither depends on the other. On a higher-latency connection
+      // (mobile networks especially) that doubles the wait for no reason:
+      // now both run concurrently, so total time is roughly the slower of
+      // the two instead of the sum of both.
+      let qDone = 0, qOk = 0, histDone = 0, histAborted = false, histIdx = 0;
+      function reportProgress() {
+        if (silent || histAborted) return;
+        const pct = Math.round(((qDone + histDone) / (HOLD.length * 2)) * 100);
+        setProg(pct, `Loading: ${qDone}/${HOLD.length} quotes · ${histDone}/${HOLD.length} history`,
+          `${loadedTickers.length} loaded · ${failedTickers.length} failed`);
+      }
+
       const quoteTasks = HOLD.map((h, i) => async () => {
         try {
           const r = await fetchWithTimeout(`/api/quote?ticker=${h.t}`, 6000);
           const d = await r.json();
           if (d && d.c > 0) { prices[h.t] = { c: d.c, pc: d.pc || d.c * .999, hi: d.h, lo: d.l }; qOk++; invalidatePos(); }
         } catch (e) { }
-        const done = Object.keys(prices).length;
-        if (!silent) setProg(Math.round(done / HOLD.length * 40), "Fetching quotes…", `${done}/${HOLD.length} prices loaded`);
+        qDone++;
+        reportProgress();
       });
-      await parallelLimit(quoteTasks, 4);
-
-      if (!silent) {
-        setProg(40, `Got ${qOk}/${HOLD.length} prices`, "Starting history load…");
-
-        const tickerBox = document.getElementById("ls-tickers");
-        if (tickerBox) tickerBox.style.display = "flex";
-      }
+      async function loadQuotes() { await parallelLimit(quoteTasks, 4); }
 
       const skipTimer = setTimeout(() => {
         const sb = document.getElementById("ls-skip"); if (sb) sb.style.display = "inline-block";
-        setProg(null, "History taking a while…", "Proxies can be slow — skip to load app now, or wait for charts.");
+        setProg(null, "Taking a while…", "Proxies can be slow — skip to load app now, or wait for charts.");
       }, 8000);
 
       const skipPromise = new Promise(res => { _skipHistoryResolve = res; });
 
-      
       // Fetches history for up to 4 holdings at a time (same concurrency
-      // already used for quotes above) instead of one at a time with a
-      // 200ms pause between each — that sequential-plus-sleep pattern was
-      // what made a ~25-holding portfolio take 10-15 seconds to load on
-      // every cold visit. Order of fetches is preserved (each of the 4
-      // workers pulls the next ticker off the same shared queue), only the
-      // concurrency changed.
-      let histDone = 0, histAborted = false, histIdx = 0;
+      // used for quotes) instead of one at a time with a 200ms pause between
+      // each — that sequential-plus-sleep pattern was what made a
+      // ~25-holding portfolio take 10-15 seconds to load on every cold
+      // visit. Order of fetches is preserved (each of the 4 workers pulls
+      // the next ticker off the same shared queue), only the concurrency
+      // changed.
       async function historyWorker() {
         while (histIdx < HOLD.length && !histAborted) {
           const h = HOLD[histIdx++];
@@ -2377,16 +2405,17 @@
 
           histDone++;
           addTickerStatus(h.t, got);
-          if (!histAborted) setProg(40 + Math.round(histDone / HOLD.length * 58),
-            `History: ${histDone}/${HOLD.length}`,
-            `${loadedTickers.length} loaded · ${failedTickers.length} failed`);
+          reportProgress();
         }
       }
       async function loadHistSeq() {
         await Promise.all(Array.from({ length: Math.min(4, HOLD.length) }, historyWorker));
       }
 
-      const winner = await Promise.race([loadHistSeq().then(() => "done"), skipPromise]);
+      const winner = await Promise.race([
+        Promise.all([loadQuotes(), loadHistSeq()]).then(() => "done"),
+        skipPromise
+      ]);
       histAborted = (winner === "skip");
       clearTimeout(skipTimer);
       const sb = document.getElementById("ls-skip"); if (sb) sb.style.display = "none";
@@ -3058,8 +3087,8 @@
   </div>`: "";
       const tfs = ["1 Month", "3 Months", "6 Months", "1 Year", "5 Years", "All Time"];
       if (canSinceBuy) tfs.push("Since Buy");
-      const tfBar = `<div style="display:flex;gap:4px;margin-left:auto">
-    ${tfs.map(tf => `<button onclick="setPerfTF('${tf}')" style="padding:5px 11px;border-radius:6px;border:1px solid ${perfTimeframe === tf ? "var(--blue)" : "var(--border)"};background:${perfTimeframe === tf ? "var(--blue)" : "var(--dim)"};color:${perfTimeframe === tf ? "#fff" : "var(--muted)"};font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all .15s">${tf}</button>`).join("")}
+      const tfBar = `<div class="tf-bar" style="display:flex;gap:4px;margin-left:auto">
+    ${tfs.map(tf => `<button class="tf-btn" onclick="setPerfTF('${tf}')" style="border:1px solid ${perfTimeframe === tf ? "var(--blue)" : "var(--border)"};background:${perfTimeframe === tf ? "var(--blue)" : "var(--dim)"};color:${perfTimeframe === tf ? "#fff" : "var(--muted)"}">${tf}</button>`).join("")}
   </div>`;
       el.innerHTML = `<div class="perf-hdr" style="flex-wrap:wrap;row-gap:8px;min-width:0;align-items:center">
     ${detailT ? `<button onclick="backToPort()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;transition:background .15s;flex-shrink:0" onmouseover="this.style.background='var(--blue)'" onmouseout="this.style.background='var(--accent)'"><i class="fa-solid fa-arrow-left"></i> All Stocks</button>` : ""}
