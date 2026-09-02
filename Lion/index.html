@@ -2594,7 +2594,12 @@
     // until a tab is unlocked (it fails with an Unauthorized error). Only
     // show them once a manager has actually unlocked something to edit.
     function renderNavControls() {
-      const editing = holdingsUnlocked || weightingsUnlocked || unitvalueUnlocked;
+      // Scoped to the tab actually on screen, not "has any tab ever been
+      // unlocked this session" — unlocking Holdings and then visiting the
+      // still-locked Weightings tab shouldn't bring the buttons back.
+      const editing = (curTab === 'holdings' && holdingsUnlocked) ||
+        (curTab === 'weightings' && weightingsUnlocked) ||
+        (curTab === 'unitvalue' && unitvalueUnlocked);
       const keyBtn = document.getElementById('key-btn'), saveBtn = document.getElementById('save-all-btn');
       if (keyBtn) keyBtn.style.display = editing ? 'flex' : 'none';
       if (saveBtn) saveBtn.style.display = editing ? 'flex' : 'none';
