@@ -2602,6 +2602,7 @@
 
     function setTab(t) {
       curTab = t; if (t !== "performance") detailT = null;
+      window.scrollTo(0, 0);
       document.querySelectorAll(".tab").forEach(el => {
         const txt = el.textContent.toLowerCase().trim();
         el.classList.toggle("active", txt.includes(t.slice(0, 4)));
@@ -3054,6 +3055,7 @@
 
     function openDetail(t) {
       detailT = t; curTab = "performance";
+      window.scrollTo(0, 0);
       document.querySelectorAll(".tab").forEach(el => el.classList.toggle("active", el.textContent.toLowerCase().includes("perf")));
       render();
     }
@@ -3167,7 +3169,7 @@
         }
       }
     }
-    function backToPort() { detailT = null; render(); }
+    function backToPort() { detailT = null; window.scrollTo(0, 0); render(); }
     function updatePerfGrid(pos) {
       const sg = document.getElementById("sg"); if (!sg) return;
       sg.innerHTML = (pos || getPos()).map((p, i) => {
