@@ -1655,9 +1655,12 @@
     const SM = {
       "Information Technology": { color: "#2563eb" },
       "Communication Services": { color: "#7c3aed" },
-      "Consumer Staples": { color: "#059669" },
+      // Fuchsia/gold instead of literal red/green — every other sector color
+      // is purely decorative, but a red or green sector chart reads as
+      // losing/making money regardless of that sector's actual trend.
+      "Consumer Staples": { color: "#a16207" },
       "Consumer Discretionary": { color: "#d97706" },
-      "Health Care": { color: "#dc2626" },
+      "Health Care": { color: "#c026d3" },
       "Industrials": { color: "#0891b2" },
       "Financials": { color: "#0369a1" },
       "Energy + Utilities": { color: "#ea580c" },
@@ -3038,6 +3041,7 @@
       const pos2 = getPos();
       const noData = `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;letter-spacing:.5px">NO HISTORY DATA</div>`;
       sectors.forEach((sector, si) => {
+        const color = (SM[sector] || { color: "#2563eb" }).color;
         const sectorPositions = pos2.filter(p => p.s === sector);
 
         const secChartEl = document.getElementById(`sec_chart_${si}`);
@@ -3049,7 +3053,7 @@
           // function's comment for the full story).
           const combined = filterByMonths(combineHoldingsValue(sectorPositions), 1);
           const labels = combined.map(x => x.date), data = combined.map(x => x.value);
-          if (data.length > 1) drawChart(secChartEl, labels, data, "#2563eb", 260, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+          if (data.length > 1) drawChart(secChartEl, labels, data, color, 260, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
           else secChartEl.innerHTML = noData;
         }
 
@@ -3057,7 +3061,7 @@
           const stkEl = document.getElementById("stk_" + p.t);
           const sm = getStkMonth(p.t, p.sh);
           if (stkEl) {
-            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, "#2563eb", 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, color, 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
             else stkEl.innerHTML = noData;
           }
         });
@@ -3115,7 +3119,7 @@
       const labels = combined.map(x => x.date), data = combined.map(x => x.value);
       if (chartEl) {
         if (data.length > 1) {
-          drawChart(chartEl, labels, data, "#2563eb", 340, { dots: false, tight: false, yFmt: fK, timeframe: sectorTimeframe });
+          drawChart(chartEl, labels, data, meta.color, 340, { dots: false, tight: false, yFmt: fK, timeframe: sectorTimeframe });
           attachDragMeasure(chartEl, labels, data, { tight: false });
         } else {
           chartEl.innerHTML = `<div style="height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;letter-spacing:.5px">No chart data available</div>`;
@@ -3143,7 +3147,7 @@
           const stkEl = document.getElementById('sd_' + p.t);
           const sm = getStkMonth(p.t, p.sh);
           if (stkEl) {
-            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, "#2563eb", 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, meta.color, 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
             else stkEl.innerHTML = noData;
           }
         });
@@ -3226,11 +3230,7 @@
       }
       const labels = raw.map(x => x.date), data = raw.map(x => x.v);
       if (!data.length) { mcEl.innerHTML = `<div style="height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;letter-spacing:.5px">No chart data available</div>`; return; }
-      // Always the neutral brand color, never the holding's sector color —
-      // sector colors (e.g. Health Care = red, Consumer Staples = green)
-      // would otherwise read as loss/gain on this chart regardless of the
-      // stock's actual trend.
-      const color = "#2563eb";
+      const color = isD ? (SM[p?.s] || { color: "#2563eb" }).color : "#2563eb";
       const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       function shortDate(ds) { if (!ds) return ""; const [y, m] = ds.split("-"); return MONTHS[+m - 1] + " '" + String(y).slice(2); }
       const tfStr = labels.length > 1 ? `${shortDate(labels[0])} – ${shortDate(labels[labels.length - 1])}` : "";
