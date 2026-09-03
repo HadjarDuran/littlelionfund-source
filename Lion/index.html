@@ -1674,7 +1674,7 @@
     let AUTH_TOKENS = { holdings: null, weightings: null };
     let HOLD = [], CASH_BANK = 0, CASH_BROK = 0;
     let prices = {}, hist = {}, portHist = [];
-    let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false;
+    let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false, detailSector = null, sectorTimeframe = "1 Month";
     let lastDataUpdate = null; // when loadAll() last completed successfully — the "Data as of" trust stamp on the Dashboard
     let _posCache = null, _posCacheKey = "", _portHistDirty = true;
     let weightingsData = [];
@@ -2488,21 +2488,25 @@
       }
     }
 
-    function buildPortHist() {
-      if (!_portHistDirty) return;
-      // Different tickers' price feeds don't all update on the same day
-      // (a thinly-traded or recently-added holding can lag a day or two
-      // behind the rest). Summing only whatever's literally present on each
-      // date used to make the total plunge on any trailing date where one
-      // holding's feed hadn't caught up yet, even though nothing was
-      // actually sold. Forward-fill each holding's last known price onto
-      // every date in the combined calendar instead, so a lagging feed just
-      // holds its last value rather than silently dropping out of the sum.
+    // Different tickers' price feeds don't all update on the same day (a
+    // thinly-traded or recently-added holding can lag a day or two behind
+    // the rest). Summing only whatever's literally present on each date
+    // makes the total plunge on any trailing date where one holding's feed
+    // hadn't caught up yet, even though nothing was actually sold. Forward-
+    // fill each holding's last known price onto every date in the combined
+    // calendar instead, so a lagging feed just holds its last value rather
+    // than silently dropping out of the sum. Always unions dates across each
+    // position's FULL history (never a pre-sliced window) — slicing before
+    // combining lets one position's data "switch on" mid-series and get
+    // added as a step-jump equal to its entire value, which reads as a fake
+    // spike. Callers that only want a recent window should filter the
+    // returned series by date afterward, not slice the inputs beforehand.
+    function combineHoldingsValue(positions) {
       const allDates = new Set();
-      HOLD.forEach(({ t }) => (hist[t] || []).forEach(({ date }) => allDates.add(date)));
+      positions.forEach(({ t }) => (hist[t] || []).forEach(({ date }) => allDates.add(date)));
       const sortedDates = [...allDates].sort();
       const dm = {};
-      HOLD.forEach(({ t, sh, d: bought }) => {
+      positions.forEach(({ t, sh, d: bought }) => {
         const h = hist[t] || [];
         if (!h.length) return;
         let idx = 0;
@@ -2512,7 +2516,22 @@
           if (h[idx].date <= date) dm[date] = (dm[date] || 0) + h[idx].close * sh;
         });
       });
-      portHist = sortedDates.filter(d => dm[d] != null).map(date => ({ date, v: +dm[date].toFixed(2), value: +dm[date].toFixed(2) }));
+      return sortedDates.filter(d => dm[d] != null).map(date => ({ date, value: +dm[date].toFixed(2) }));
+    }
+    // Windows a {date, value} series by real calendar months back from its
+    // last entry (null months = no cutoff, i.e. "All Time") — same
+    // calendar-cutoff approach as renderPerf's timeframe filter, so a
+    // window like "1 Month" reflects an actual month, not a fixed row count.
+    function filterByMonths(series, months) {
+      if (months == null || !series.length) return series;
+      const cutoff = new Date(series[series.length - 1].date + "T00:00:00Z");
+      cutoff.setUTCMonth(cutoff.getUTCMonth() - months);
+      const cutoffStr = cutoff.toISOString().split("T")[0];
+      return series.filter(x => x.date >= cutoffStr);
+    }
+    function buildPortHist() {
+      if (!_portHistDirty) return;
+      portHist = combineHoldingsValue(HOLD).map(d => ({ date: d.date, v: d.value, value: d.value }));
       _portHistDirty = false;
     }
 
@@ -2606,7 +2625,7 @@
     }
 
     function setTab(t) {
-      curTab = t; if (t !== "performance") detailT = null;
+      curTab = t; if (t !== "performance") detailT = null; if (t !== "sectors") detailSector = null;
       window.scrollTo(0, 0);
       document.querySelectorAll(".tab").forEach(el => {
         const txt = el.textContent.toLowerCase().trim();
@@ -2968,13 +2987,14 @@
       return { labels: pts.map(d => d.date), data: pts.map(d => +(d.close * sh).toFixed(2)) };
     }
     function renderSectors(el) {
+      if (detailSector) { renderSectorDetail(el, detailSector); return; }
       const pos = getPos(), sectors = Object.keys(SM);
       el.innerHTML = `<div class="sec-stack">` + sectors.map((sector, si) => {
         const meta = SM[sector], sp = pos.filter(p => p.s === sector);
         const val = sp.reduce((s, p) => s + p.val, 0), cost = sp.reduce((s, p) => s + p.cost, 0);
         const pnl = val - cost, pnlP = cost ? (pnl / cost) * 100 : 0;
         return `<div class="sec-card" style="animation-delay:${si * .06}s">
-      <div class="sec-hdr">
+      <div class="sec-hdr" onclick="openSectorDetail('${sector}')" style="cursor:pointer">
         <div class="sec-name"><div class="sec-dot" style="background:${meta.color}"></div>${sector}</div>
           <div class="sec-stats">
             <div style="text-align:right">
@@ -3018,32 +3038,18 @@
       const pos2 = getPos();
       const noData = `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;letter-spacing:.5px">NO HISTORY DATA</div>`;
       sectors.forEach((sector, si) => {
-        const color = (SM[sector] || { color: "#2563eb" }).color;
         const sectorPositions = pos2.filter(p => p.s === sector);
 
         const secChartEl = document.getElementById(`sec_chart_${si}`);
         if (secChartEl && sectorPositions.length > 0) {
-          // Same forward-fill treatment as buildPortHist(): summing only
-          // whatever's literally present per date made the sector total
-          // zigzag whenever one holding's trading dates didn't line up
-          // exactly with the rest (it'd drop out of the sum, then reappear).
-          const combinedData = {};
-          const allDates = new Set();
-          sectorPositions.forEach(p => (hist[p.t] || []).slice(-22).forEach(({ date }) => allDates.add(date)));
-          const sortedSecDates = [...allDates].sort();
-          sectorPositions.forEach(p => {
-            const h = (hist[p.t] || []).slice(-22);
-            if (!h.length) return;
-            let idx = 0;
-            sortedSecDates.forEach(date => {
-              if (p.d && date < p.d) return;
-              while (idx < h.length - 1 && h[idx + 1].date <= date) idx++;
-              if (h[idx].date <= date) combinedData[date] = (combinedData[date] || 0) + h[idx].close * p.sh;
-            });
-          });
-          const sorted = Object.entries(combinedData).sort(([a], [b]) => a.localeCompare(b));
-          const labels = sorted.map(x => x[0]), data = sorted.map(x => x[1]);
-          if (data.length > 1) drawChart(secChartEl, labels, data, color, 260, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+          // Combined across each holding's FULL history via combineHoldingsValue,
+          // then windowed to the last calendar month — not sliced to the last 22
+          // raw records per holding first, which used to let one holding's data
+          // "switch on" mid-window and jump in as a fake spike (see that
+          // function's comment for the full story).
+          const combined = filterByMonths(combineHoldingsValue(sectorPositions), 1);
+          const labels = combined.map(x => x.date), data = combined.map(x => x.value);
+          if (data.length > 1) drawChart(secChartEl, labels, data, "#2563eb", 260, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
           else secChartEl.innerHTML = noData;
         }
 
@@ -3051,11 +3057,97 @@
           const stkEl = document.getElementById("stk_" + p.t);
           const sm = getStkMonth(p.t, p.sh);
           if (stkEl) {
-            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, color, 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, "#2563eb", 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
             else stkEl.innerHTML = noData;
           }
         });
       });
+    }
+    function setSectorTF(tf) { sectorTimeframe = tf; renderSectors(document.getElementById("content")); }
+    function openSectorDetail(sector) {
+      detailSector = sector; sectorTimeframe = "1 Month";
+      window.scrollTo(0, 0);
+      render();
+    }
+    function closeSectorDetail() { detailSector = null; window.scrollTo(0, 0); render(); }
+    // Per-sector drill-down — same state → timeframe-bar → filtered-chart
+    // shape as renderPerf's single-stock view, just scoped to one sector's
+    // combined holdings instead of one ticker or the whole portfolio.
+    function renderSectorDetail(el, sector) {
+      const meta = SM[sector] || { color: "#2563eb" };
+      const pos = getPos(), sp = pos.filter(p => p.s === sector);
+      const val = sp.reduce((s, p) => s + p.val, 0), cost = sp.reduce((s, p) => s + p.cost, 0);
+      const pnl = val - cost, pnlP = cost ? (pnl / cost) * 100 : 0;
+      const tfs = ["1 Month", "3 Months", "6 Months", "1 Year", "5 Years", "All Time"];
+      const tfBar = `<div class="tf-bar" style="display:flex;gap:4px;margin-left:auto">
+    ${tfs.map(tf => `<button class="tf-btn" onclick="setSectorTF('${tf}')" style="border:1px solid ${sectorTimeframe === tf ? "var(--blue)" : "var(--border)"};background:${sectorTimeframe === tf ? "var(--blue)" : "var(--dim)"};color:${sectorTimeframe === tf ? "#fff" : "var(--muted)"}">${tf}</button>`).join("")}
+  </div>`;
+      el.innerHTML = `<div class="perf-hdr" style="flex-wrap:wrap;row-gap:8px;min-width:0;align-items:center">
+    <button onclick="closeSectorDetail()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;transition:background .15s;flex-shrink:0" onmouseover="this.style.background='var(--blue)'" onmouseout="this.style.background='var(--accent)'"><i class="fa-solid fa-arrow-left"></i> All Sectors</button>
+    <span class="ptitle" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px"><div class="sec-dot" style="background:${meta.color}"></div>${sector}</span>
+    <div class="pstats" style="flex-wrap:wrap;row-gap:8px;column-gap:16px;min-width:0;overflow:hidden">
+      <div style="display:flex;flex-direction:column">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Total Value</div>
+        <div style="font-weight:700"><b>${fU(val)}</b></div>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Total P&L</div>
+        <div style="font-weight:700;color:${cl(pnl)}">${fS(pnl)} (${fP(pnlP)})</div>
+      </div>
+    </div>
+    ${tfBar}
+  </div>
+  <div class="chdiv">
+    <div class="clbl" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <span><i class="fa-solid fa-chart-line" style="margin-right:6px"></i>Sector Combined Performance — ${sectorTimeframe}</span>
+      <span style="font-size:9px;letter-spacing:0.3px;text-transform:none;font-weight:500;color:var(--muted);opacity:0.75"><i class="fa-solid fa-arrows-left-right" style="margin-right:4px"></i>Drag to compare two points</span>
+    </div>
+    <div class="chart-div" id="sec-detail-chart" style="height:340px"></div>
+  </div>
+  ${sp.length ? `<div class="sec-cards-col" style="margin-top:16px">
+    <div class="sl" style="margin-bottom:12px"><i class="fa-solid fa-layer-group"></i>&nbsp;Individual Holdings</div>
+    <div class="stock-grid" id="sec-detail-holdings"></div>
+  </div>` : ""}`;
+
+      const chartEl = document.getElementById("sec-detail-chart");
+      const tfMonths = { "1 Month": 1, "3 Months": 3, "6 Months": 6, "1 Year": 12, "5 Years": 60, "All Time": null };
+      const combined = filterByMonths(combineHoldingsValue(sp), tfMonths[sectorTimeframe]);
+      const labels = combined.map(x => x.date), data = combined.map(x => x.value);
+      if (chartEl) {
+        if (data.length > 1) {
+          drawChart(chartEl, labels, data, "#2563eb", 340, { dots: false, tight: false, yFmt: fK, timeframe: sectorTimeframe });
+          attachDragMeasure(chartEl, labels, data, { tight: false });
+        } else {
+          chartEl.innerHTML = `<div style="height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;letter-spacing:.5px">No chart data available</div>`;
+        }
+      }
+
+      const holdingsEl = document.getElementById("sec-detail-holdings");
+      if (holdingsEl) {
+        const noData = `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;letter-spacing:.5px">NO HISTORY DATA</div>`;
+        holdingsEl.innerHTML = sp.map(p => {
+          const sm = getStkMonth(p.t, p.sh);
+          const chg = sm.data.length > 1 ? ((sm.data[sm.data.length - 1] - sm.data[0]) / sm.data[0]) * 100 : 0;
+          return '<div class="stk-card" onclick="openDetail(\'' + p.t + '\')" style="margin:0">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+            + '<div><div class="stk-title">' + p.n + '</div>'
+            + '<div class="stk-sub"><div class="d9" style="background:' + meta.color + ';width:7px;height:7px"></div><span>' + p.t + '</span></div></div>'
+            + '<div style="text-align:right">'
+            + '<div style="font-size:12px;font-weight:700">' + (p.price ? fU(p.price) : '—') + '</div>'
+            + '<div style="font-size:10px;color:' + cl(chg) + ';font-weight:600">' + fP(chg) + ' <span style="font-size:8px;color:var(--muted)">1M</span></div>'
+            + '</div></div>'
+            + '<div class="chart-div" id="sd_' + p.t + '" style="height:60px;margin-top:8px"></div>'
+            + '</div>';
+        }).join('');
+        sp.forEach(p => {
+          const stkEl = document.getElementById('sd_' + p.t);
+          const sm = getStkMonth(p.t, p.sh);
+          if (stkEl) {
+            if (sm.data.length > 1) drawChart(stkEl, sm.labels, sm.data, "#2563eb", 60, { dots: false, tight: true, yFmt: fK, timeframe: "1 Month" });
+            else stkEl.innerHTML = noData;
+          }
+        });
+      }
     }
 
     function openDetail(t) {
@@ -3134,7 +3226,11 @@
       }
       const labels = raw.map(x => x.date), data = raw.map(x => x.v);
       if (!data.length) { mcEl.innerHTML = `<div style="height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;letter-spacing:.5px">No chart data available</div>`; return; }
-      const color = isD ? (SM[p?.s] || { color: "#2563eb" }).color : "#2563eb";
+      // Always the neutral brand color, never the holding's sector color —
+      // sector colors (e.g. Health Care = red, Consumer Staples = green)
+      // would otherwise read as loss/gain on this chart regardless of the
+      // stock's actual trend.
+      const color = "#2563eb";
       const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       function shortDate(ds) { if (!ds) return ""; const [y, m] = ds.split("-"); return MONTHS[+m - 1] + " '" + String(y).slice(2); }
       const tfStr = labels.length > 1 ? `${shortDate(labels[0])} – ${shortDate(labels[labels.length - 1])}` : "";
