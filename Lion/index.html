@@ -1652,18 +1652,19 @@
     const FB = "https://finnhub.io/api/v1";
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+    // Colors are spread evenly around the wheel, skipping the red (~350-15°)
+    // and green (~90-155°) hue bands — every other sector color is purely
+    // decorative, but a red or green sector chart reads as losing/making
+    // money regardless of that sector's actual trend.
     const SM = {
-      "Information Technology": { color: "#2563eb" },
-      "Communication Services": { color: "#7c3aed" },
-      // Fuchsia/gold instead of literal red/green — every other sector color
-      // is purely decorative, but a red or green sector chart reads as
-      // losing/making money regardless of that sector's actual trend.
-      "Consumer Staples": { color: "#a16207" },
-      "Consumer Discretionary": { color: "#d97706" },
-      "Health Care": { color: "#c026d3" },
-      "Industrials": { color: "#0891b2" },
-      "Financials": { color: "#0369a1" },
-      "Energy + Utilities": { color: "#ea580c" },
+      "Information Technology": { color: "#3b82f6" },
+      "Communication Services": { color: "#8b5cf6" },
+      "Consumer Staples": { color: "#eab308" },
+      "Consumer Discretionary": { color: "#f97316" },
+      "Health Care": { color: "#d946ef" },
+      "Industrials": { color: "#06b6d4" },
+      "Financials": { color: "#0ea5e9" },
+      "Energy + Utilities": { color: "#14b8a6" },
     };
     // Was a hardcoded constant; now fetched from /api/units so it can
     // change (new contributions/redemptions) without a code deploy. Keeps
