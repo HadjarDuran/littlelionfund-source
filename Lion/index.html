@@ -1276,6 +1276,27 @@
       border-color: var(--red)
     }
 
+    .trimbtn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 10px;
+      font-family: 'DM Sans', sans-serif;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 4px
+    }
+
+    .trimbtn:hover {
+      background: var(--dim);
+      border-color: var(--blue);
+      color: var(--blue)
+    }
+
     .sector-tag {
       padding: 4px 8px;
       border: 1px solid var(--border);
@@ -1678,7 +1699,7 @@
     let AUTH_TOKENS = { holdings: null, weightings: null };
     let HOLD = [], CASH_BANK = 0, CASH_BROK = 0;
     let prices = {}, hist = {}, portHist = [];
-    let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false, detailSector = null, sectorTimeframe = "1 Month";
+    let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, removingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false, detailSector = null, sectorTimeframe = "1 Month";
     let lastDataUpdate = null; // when loadAll() last completed successfully — the "Data as of" trust stamp on the Dashboard
     let _posCache = null, _posCacheKey = "", _portHistDirty = true;
     let weightingsData = [];
@@ -2654,6 +2675,7 @@
      
       renderLockOverlay();
       renderDeleteModal();
+      renderRemoveSharesModal();
       renderUVDeleteModal();
       const el = document.getElementById("content");
       if (!el) return;
@@ -3425,6 +3447,79 @@
       }
     }
 
+    // Quick "trim N shares off a position" modal — same skeleton as
+    // renderDeleteModal() above, with a quantity input in place of fixed
+    // confirmation text. Removing exactly all remaining shares falls
+    // through to the same HOLD.splice a full delete does, since zero
+    // shares left means it isn't a holding anymore.
+    function renderRemoveSharesModal() {
+      let el = document.getElementById("remove-shares-modal");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "remove-shares-modal";
+        document.body.appendChild(el);
+      }
+      if (removingIdx !== null) {
+        const h = HOLD[removingIdx];
+        el.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(45, 74, 62, 0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:500; animation: fadeIn .3s ease"></div>
+      <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:501;">
+        <div style="background:var(--card); padding:32px; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,0.4); text-align:center; width:340px; animation: scaleIn .3s ease both;">
+          <div style="width:64px; height:64px; background:var(--dim); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+            <i class="fa-solid fa-minus" style="font-size:24px; color:var(--blue);"></i>
+          </div>
+          <div style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:22px; color:var(--accent); margin-bottom:8px;">Remove Shares</div>
+          <div style="font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.5">You currently hold <b>${h.sh}</b> shares of <b>${h.t}</b>. How many would you like to remove?</div>
+          <input class="fi" id="rm-shares-qty" type="number" placeholder="e.g. 10" autocomplete="off" style="text-align:center;margin-bottom:8px" />
+          <div id="rm-shares-err" style="display:none;color:var(--red);font-size:11px;margin-bottom:10px">Enter a number between 0 and ${h.sh}</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="fcb" onclick="cancelRemoveShares()" style="margin:0; padding:0; height:44px;">Cancel</button>
+            <button class="fb" id="rm-shares-confirm" onclick="confirmRemoveShares()" style="margin:0; padding:0; height:44px;"><i class="fa-solid fa-minus"></i> Remove</button>
+          </div>
+        </div>
+      </div>`;
+        const inp = document.getElementById("rm-shares-qty");
+        if (inp) {
+          inp.focus();
+          inp.addEventListener("keydown", ev => { if (ev.key === "Enter") confirmRemoveShares(); });
+        }
+      } else {
+        el.innerHTML = "";
+      }
+    }
+
+    function showRemoveShares(i) {
+      removingIdx = i;
+      render();
+    }
+
+    function cancelRemoveShares() {
+      removingIdx = null;
+      render();
+    }
+
+    async function confirmRemoveShares() {
+      if (removingIdx === null) return;
+      const h = HOLD[removingIdx];
+      const n = parseFloat(document.getElementById("rm-shares-qty")?.value);
+      const errEl = document.getElementById("rm-shares-err");
+      if (isNaN(n) || n <= 0 || n > h.sh) {
+        if (errEl) errEl.style.display = "block";
+        return;
+      }
+      if (n >= h.sh) {
+        HOLD.splice(removingIdx, 1);
+      } else {
+        h.sh = +(h.sh - n).toFixed(6);
+      }
+      removingIdx = null;
+      editIdx = null;
+      invalidatePos();
+      updateSummary();
+      render();
+      await saveHoldings();
+    }
+
     function renderHold(el) {
       const pos = getPos(), tC = pos.reduce((s, p) => s + p.cost, 0);
       const pointerStyle = holdingsUnlocked ? "" : "pointer-events:none;";
@@ -3481,7 +3576,8 @@
           <div class="hrt">
             ${pp && pp.val > 0 ? `<span style="color:${cl(pp.pnl)};font-weight:600">${arr} ${fS(pp.pnl)} (${fP(pp.pnlP)})</span>
             <span style="color:var(--muted)">${fU(pp.val)}</span>` : ""}
-            <button class="rmbtn" onclick="rmv(event,${i})"><i class="fa-solid fa-xmark"></i></button>
+            <button class="trimbtn" onclick="event.stopPropagation(); showRemoveShares(${i})" title="Remove shares"><i class="fa-solid fa-minus"></i></button>
+            <button class="rmbtn" onclick="rmv(event,${i})" title="Remove position"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>`;
       }).join("")}
