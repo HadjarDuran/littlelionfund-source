@@ -2785,9 +2785,17 @@
             if (old && old.close > 0) ttm = ((p.price - old.close) / old.close) * 100;
           }
 
+          // Value Line has no API — these are typed in by hand on the
+          // Holdings tab from whatever report someone's reading, so only
+          // show the badge once a rank's actually been entered.
+          const vlParts = [];
+          if (p.vlSafety) vlParts.push(`Safety ${p.vlSafety}`);
+          if (p.vlTimeliness) vlParts.push(`Timely ${p.vlTimeliness}`);
+          const vlBadge = vlParts.length ? `<span class="sbadge" style="background:var(--dim);color:var(--muted);margin-top:3px;display:inline-block">VL ${vlParts.join(" · ")}</span>` : "";
+
           html += `<tr class="pos-row" onclick="openDetail('${p.t}')">
         <td><div class="tcell"><div class="d9" style="background:${p.color}"></div>
-          <div><div class="tn">${p.t}</div><div class="tsub">${p.n}</div></div></div></td>
+          <div><div class="tn">${p.t}</div><div class="tsub">${p.n}</div>${vlBadge}</div></div></td>
         <td data-label="Purchase Date" style="color:var(--muted);font-size:11px;text-align:right">${buyDate || "—"}</td>
         <td data-label="Shares" style="color:var(--muted)">${p.sh}</td>
         <td data-label="Avg Cost" style="color:var(--muted)">${fU(p.ac)}</td>
@@ -3539,6 +3547,12 @@
             <i class="fa-solid fa-chevron-down" style="font-size:10px; color:var(--muted)"></i>
           </div>
         </div>
+        <div class="fg"><div class="fl"><i class="fa-solid fa-shield-halved" style="font-size:9px"></i> Value Line Ranks (Optional)</div>
+          <div style="display:flex;gap:8px">
+            <input class="fi" id="fvls" placeholder="Safety 1-5" type="number" min="1" max="5" step="1" autocomplete="off"/>
+            <input class="fi" id="fvlt" placeholder="Timely 1-5" type="number" min="1" max="5" step="1" autocomplete="off"/>
+          </div>
+        </div>
         <button class="fb" id="upsert-btn" onclick="upsert()"><i class="fa-solid fa-${editIdx !== null ? "check" : "plus"}"></i> ${editIdx !== null ? "Update" : "Add Position"}</button>
         ${editIdx !== null ? `<button class="fcb" onclick="cancelEdit()"><i class="fa-solid fa-xmark"></i> Cancel</button>` : ""}
       </div>
@@ -3592,12 +3606,14 @@
         document.getElementById("fs").value = h.sh;
         document.getElementById("fc").value = h.ac;
         document.getElementById("fsec").value = h.s;
+        document.getElementById("fvls").value = h.vlSafety || "";
+        document.getElementById("fvlt").value = h.vlTimeliness || "";
       }
       if (editIdx !== null) {
         const h = HOLD[editIdx];
         ["ft", "fs", "fc"].forEach((id, i) => { const e = document.getElementById(id); if (e) e.value = [h.t, h.sh, h.ac][i]; });
       }
-      ["ft", "fs", "fc"].forEach(id => {
+      ["ft", "fs", "fc", "fvls", "fvlt"].forEach(id => {
         const e = document.getElementById(id); if (e) {
           e.addEventListener("keydown", ev => { if (ev.key === "Enter" && !e.disabled) upsert(); });
           e.addEventListener("input", valHoldControls);
@@ -3644,6 +3660,13 @@
       const s = parseFloat(document.getElementById("fs").value);
       const c = parseFloat(document.getElementById("fc").value);
       const sec = document.getElementById("fsec").value;
+      // Value Line's ranks aren't available through any API — these are
+      // typed in by hand from whatever report the fund manager is reading,
+      // same as every other holding field. Optional, so a blank/invalid
+      // entry just clears the rank rather than blocking the save.
+      const clampRank = v => { const n = parseInt(v, 10); return (n >= 1 && n <= 5) ? n : null; };
+      const vlSafety = clampRank(document.getElementById("fvls").value);
+      const vlTimeliness = clampRank(document.getElementById("fvlt").value);
       if (!t || isNaN(s) || isNaN(c)) return;
 
       const btn = document.getElementById("upsert-btn");
@@ -3651,8 +3674,8 @@
 
       const isNewTicker = HOLD.findIndex(h => h.t === t) < 0;
       const i = HOLD.findIndex(h => h.t === t);
-      if (i >= 0) { HOLD[i].sh = s; HOLD[i].ac = c; HOLD[i].s = sec; HOLD[i].d = d; }
-      else HOLD.unshift({ t, n: t, s: sec, sh: s, ac: c, d });
+      if (i >= 0) { HOLD[i].sh = s; HOLD[i].ac = c; HOLD[i].s = sec; HOLD[i].d = d; HOLD[i].vlSafety = vlSafety; HOLD[i].vlTimeliness = vlTimeliness; }
+      else HOLD.unshift({ t, n: t, s: sec, sh: s, ac: c, d, vlSafety, vlTimeliness });
 
       editIdx = null;
       invalidatePos();
