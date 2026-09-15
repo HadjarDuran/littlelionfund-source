@@ -1,0 +1,10 @@
+# Copy this file to .dev.vars (gitignored) and fill in real values for
+# local `wrangler dev` testing. In production these are set as encrypted
+# secrets instead — see the comment block in wrangler.toml.
+
+HOLDINGS_PWD=
+WEIGHTINGS_PWD=
+SESSION_SECRET=
+FINNHUB_KEY=
+LION_REST_API_URL=
+LION_REST_API_TOKEN=

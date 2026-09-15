@@ -1,15 +1,14 @@
-export const config = { runtime: 'edge' };
+import { json } from '../lib/http.js';
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const ticker = (searchParams.get('ticker') || '').toUpperCase().replace(/[^A-Z]/g, '');
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Cache-Control': 's-maxage=3600', // cache 1 hour at the edge
+};
+
+export async function handleHist(request, env) {
+  const url = new URL(request.url);
+  const ticker = (url.searchParams.get('ticker') || '').toUpperCase().replace(/[^A-Z]/g, '');
   if (!ticker) return new Response('Missing ticker', { status: 400 });
-
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json',
-    'Cache-Control': 's-maxage=3600', // cache 1 hour at the edge
-  };
 
   // Try Stooq first
   try {
@@ -20,10 +19,10 @@ export default async function handler(req) {
     const lines = text.trim().split('\n');
     if (lines.length > 5) {
       const data = lines.slice(1).map(l => {
-        const [date,,,,close] = l.split(',');
+        const [date, , , , close] = l.split(',');
         return date && close ? { date: date.trim(), close: parseFloat(close) } : null;
       }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
-      if (data.length > 20) return new Response(JSON.stringify(data), { headers });
+      if (data.length > 20) return json(data, 200, CORS);
     }
   } catch (e) {}
 
@@ -40,16 +39,16 @@ export default async function handler(req) {
       `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${from}&period2=${to}&interval=1d`,
       { headers: { 'User-Agent': 'Mozilla/5.0' } }
     );
-    const json = await r.json();
-    const result = json.chart.result[0];
+    const body = await r.json();
+    const result = body.chart.result[0];
     const timestamps = result.timestamp;
     const closes = result.indicators.quote[0].close;
     const data = timestamps.map((ts, i) => ({
       date: new Date(ts * 1000).toISOString().split('T')[0],
       close: closes[i] ? +closes[i].toFixed(4) : null,
     })).filter(d => d.close !== null);
-    return new Response(JSON.stringify(data), { headers });
+    return json(data, 200, CORS);
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'Failed to fetch history' }), { status: 502, headers });
+    return json({ error: 'Failed to fetch history' }, 502, CORS);
   }
 }

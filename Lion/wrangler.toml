@@ -1,0 +1,31 @@
+name = "little-lion-fund"
+main = "src/worker.js"
+compatibility_date = "2026-09-15"
+
+# Serves everything in public/ (index.html, sq-logo.png, wide-logo.png)
+# directly, without invoking the Worker, for any request path that matches
+# a real file. Anything else (all /api/* routes) falls through to the
+# Worker's fetch handler in src/worker.js.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Same schedule as the old vercel.json cron: weekdays at 21:00 UTC (market
+# close). Invokes the Worker's `scheduled` export directly — see
+# src/routes/snapshotNav.js.
+[triggers]
+crons = ["0 21 * * 1-5"]
+
+# Non-secret values only. Set everything below as encrypted secrets instead
+# — via `wrangler secret put <NAME>` (or the Cloudflare dashboard's
+# Settings > Variables and Secrets for this Worker), never here:
+#   HOLDINGS_PWD
+#   WEIGHTINGS_PWD
+#   SESSION_SECRET
+#   FINNHUB_KEY
+#   LION_REST_API_URL      (or KV_REST_API_URL)
+#   LION_REST_API_TOKEN    (or KV_REST_API_TOKEN)
+# CREDITS_TEXT isn't sensitive, so it's fine to keep here as a plain var —
+# swap it for a secret too if you'd rather it not be visible in the repo.
+[vars]
+CREDITS_TEXT = "Made by Maximus Weeseman for Luke Alexander and the Little Lion Fund"

@@ -3,7 +3,7 @@
 // instead of just having "current holdings" overwritten in place. Doesn't
 // retroactively invent history from before this existed — only what
 // changes from here forward gets logged.
-function diffHoldings(oldArr, newArr) {
+export function diffHoldings(oldArr, newArr) {
   const oldByTicker = new Map((oldArr || []).map(h => [h.t, h]));
   const newByTicker = new Map((newArr || []).map(h => [h.t, h]));
   const events = [];
@@ -31,5 +31,3 @@ function diffHoldings(oldArr, newArr) {
   }
   return events;
 }
-
-module.exports = { diffHoldings };
