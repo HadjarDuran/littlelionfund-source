@@ -121,3 +121,4 @@ using the `*.workers.dev` URL while you debug — it doesn't go away). No data i
 either direction since the database is shared and untouched by any of this.
 
 <!-- trigger: confirming Cloudflare Git webhook builds this branch correctly -->
+<!-- redeploy: pick up HOLDINGS_PWD/WEIGHTINGS_PWD/FINNHUB_KEY/KV_REST_API_URL/KV_REST_API_TOKEN secrets added in dashboard -->
