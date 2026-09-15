@@ -59,7 +59,12 @@ section before redoing any of this from scratch.
 - **Alternative path, if you'd rather not use Cloudflare's Git integration at all**:
   `.github/workflows/deploy.yml` deploys straight from GitHub Actions instead, sidestepping
   Cloudflare's Git-integration secret-handling entirely (it doesn't touch the two-store
-  question above — it's a different pipeline). One-time setup, all in GitHub's own UI under
+  question above — it's a different pipeline). **Validated end-to-end by actually running
+  it** (not just written): it correctly runs through checkout, Node 22 setup (wrangler 4.131
+  needs Node ≥22 — caught and fixed a Node 20→22 bug this way), `npm ci`, and starts
+  `wrangler deploy`, failing only at the expected final point —
+  `CLOUDFLARE_API_TOKEN environment variable` not yet set — which is exactly the one secret
+  only you can create. One-time setup, all in GitHub's own UI under
   Settings → Secrets and variables → Actions → New repository secret:
   - `CLOUDFLARE_API_TOKEN` — create at Cloudflare dashboard → My Profile → API Tokens →
     use the "Edit Cloudflare Workers" template
