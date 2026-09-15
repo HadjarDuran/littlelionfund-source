@@ -119,3 +119,5 @@ for a rollback window — since both platforms would be reading the same Upstash
 If anything looks wrong after cutover: repoint the domain back to Vercel (or just keep
 using the `*.workers.dev` URL while you debug — it doesn't go away). No data is at risk
 either direction since the database is shared and untouched by any of this.
+
+<!-- trigger: confirming Cloudflare Git webhook builds this branch correctly -->
