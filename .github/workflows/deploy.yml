@@ -1,0 +1,57 @@
+name: Deploy to Cloudflare (via GitHub Actions)
+
+# Alternative to Cloudflare's own Git-integration ("Workers Builds") deploy path,
+# which has a confirmed bug/gotcha where dashboard-set runtime secrets don't
+# reliably reach the Worker (see cloudflare/workers-sdk#8871 and
+# Lion/CLOUDFLARE_SETUP.md). This workflow deploys directly from a network this
+# repo already has full control over, authenticated by a Cloudflare API token
+# instead of relying on Cloudflare's own secret-handling for Git deploys.
+#
+# One-time setup required (see Lion/CLOUDFLARE_SETUP.md): add these as
+# repository secrets under Settings > Secrets and variables > Actions:
+#   CLOUDFLARE_API_TOKEN   -- create at Cloudflare dashboard > My Profile >
+#                             API Tokens > "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  -- visible in the Cloudflare dashboard sidebar/URL;
+#                             not sensitive, but stored as a secret here for
+#                             convenience (a repo variable works too)
+#   HOLDINGS_PWD, WEIGHTINGS_PWD, FINNHUB_KEY, KV_REST_API_URL, KV_REST_API_TOKEN
+#                          -- the same 5 app secrets, added here instead of (or
+#                             in addition to) Cloudflare's dashboard
+#
+# If you use this workflow, disable Cloudflare's own Git integration for this
+# Worker (Settings > Build configuration > disconnect) to avoid two deploy
+# pipelines racing each other on every push.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [cloudflare-migration]
+    paths:
+      - 'Lion/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Lion
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Deploy
+        run: npm run deploy:ci
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          HOLDINGS_PWD: ${{ secrets.HOLDINGS_PWD }}
+          WEIGHTINGS_PWD: ${{ secrets.WEIGHTINGS_PWD }}
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}

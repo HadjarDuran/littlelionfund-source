@@ -55,6 +55,22 @@ section before redoing any of this from scratch.
   3. Trigger a new deploy (push to this branch, which GitHub Actions will then automatically
      re-verify — check `.github/workflows/verify-deploy.yml`'s latest run instead of testing
      by hand).
+
+- **Alternative path, if you'd rather not use Cloudflare's Git integration at all**:
+  `.github/workflows/deploy.yml` deploys straight from GitHub Actions instead, sidestepping
+  Cloudflare's Git-integration secret-handling entirely (it doesn't touch the two-store
+  question above — it's a different pipeline). One-time setup, all in GitHub's own UI under
+  Settings → Secrets and variables → Actions → New repository secret:
+  - `CLOUDFLARE_API_TOKEN` — create at Cloudflare dashboard → My Profile → API Tokens →
+    use the "Edit Cloudflare Workers" template
+  - `CLOUDFLARE_ACCOUNT_ID` — visible in the Cloudflare dashboard's URL/sidebar (not
+    sensitive, but convenient to store as a secret here too)
+  - The same 5 app secrets: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`, `FINNHUB_KEY`,
+    `KV_REST_API_URL`, `KV_REST_API_TOKEN`
+  Then disable Cloudflare's own Git integration for this Worker (Settings → Build
+  configuration → disconnect) so the two deploy pipelines don't race each other on every
+  push. This is more setup than the fix above, but avoids depending on Cloudflare's
+  Git-integration behavior at all going forward.
 - This does **not** block *viewing* the dashboard on Vercel — Vercel is untouched and still
   fully working. It does mean the Cloudflare deployment isn't usable yet for anything that
   touches the database or live quotes, not just the password-gated edit screens.
