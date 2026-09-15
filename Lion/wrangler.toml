@@ -1,6 +1,11 @@
 name = "littlelionfunddashboard"
 main = "src/worker.js"
 compatibility_date = "2026-09-15"
+# redeploy-trigger: 2026-09-15b — forcing a fresh build so the 5 secrets
+# already added in the dashboard actually attach to a running deployment
+# (see CLOUDFLARE_SETUP.md gotcha #4). Verified via GitHub Actions that
+# /api/holdings, /api/quote etc. were 500ing with missing-secret errors
+# before this push.
 
 # Serves everything in public/ (index.html, sq-logo.png, wide-logo.png)
 # directly, without invoking the Worker, for any request path that matches
