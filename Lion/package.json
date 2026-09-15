@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "deploy:ci": "bash scripts/ci-deploy.sh"
   },
   "dependencies": {
     "@upstash/redis": "^1.31.0"

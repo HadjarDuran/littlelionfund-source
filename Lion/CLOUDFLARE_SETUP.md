@@ -14,9 +14,9 @@ section before redoing any of this from scratch.
   HTTP checks run from GitHub Actions (`.github/workflows/verify-deploy.yml`, since this
   sandbox can't reach `*.workers.dev` or `*.vercel.app` directly)
 - ❌ **None of the 5 dashboard secrets are actually reaching the Worker right now** — this is
-  now *confirmed*, not suspected. Live evidence from two separate GitHub Actions runs,
-  including one taken right after a fresh push-triggered redeploy (so it isn't a stale-build
-  issue):
+  *confirmed*, not suspected. Live evidence from GitHub Actions (`.github/workflows/verify-deploy.yml`,
+  run against the real URLs since this dev sandbox can't reach them), including one run taken
+  right after a fresh push-triggered redeploy (so it isn't a stale-build issue):
   - `/api/holdings`, `/api/weightings`, `/api/unitvalue`, `/api/cash` → **HTTP 500**,
     `{"error":"Invalid URL: /pipeline"}` on Cloudflare (Vercel returns 200 for all of these
     with the same live data). That error comes from `@upstash/redis` trying to build a
@@ -29,16 +29,32 @@ section before redoing any of this from scratch.
   - **This is almost certainly the same root cause as the password not unlocking**:
     `HOLDINGS_PWD`/`WEIGHTINGS_PWD` failing the same way (undefined secret, so no password
     can ever equal it) is indistinguishable from a wrong password by the API response alone.
-    Once the secrets are actually attached, re-test the password — it may just work.
-- ⬜ **Next action needed from you**: open Settings → Variables and Secrets for this Worker
-  and confirm all 5 are actually listed there right now: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`,
-  `FINNHUB_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`. A fresh redeploy did **not** fix
-  this, which rules out the "secrets don't apply retroactively" theory from earlier in this
-  doc — the far more likely explanation now is that the save didn't actually take, they're
-  attached to the wrong environment (check for a Production/Preview toggle in that settings
-  page), or they're on a different Worker than the one that's live. Re-add them carefully if
-  you're unsure, then let this get re-verified (a push to this branch automatically re-runs
-  the GitHub Actions check above, so no need to test manually first).
+- **Root cause (per Cloudflare's own docs and reported Workers Builds issues)**: a
+  Git-connected Worker like this one has *two separate* secret stores that look similar in
+  the dashboard —
+  1. **Settings → Build configuration → Build variables and secrets** — only visible to the
+     build script itself (as `process.env`), never bound to the deployed Worker on its own.
+  2. **Settings → Variables and Secrets** (the Worker's own settings) — bound to `env` at
+     runtime, *but* Cloudflare's Git-integration deploys have a known bug/behavior
+     ([workers-sdk#8871](https://github.com/cloudflare/workers-sdk/issues/8871)) where a new
+     deploy can silently wipe secrets set here, even without editing them.
+  Either explains everything observed: the values look "added" somewhere, yet `env` is empty
+  at request time, and a fresh redeploy alone doesn't fix it (already tested — see above).
+- ✅ **Fixed in code, needs one dashboard change from you**: added
+  `Lion/scripts/ci-deploy.sh` (wired up as `npm run deploy:ci`), which reads the 5 secrets
+  from *this build's own environment* and reapplies them with
+  `wrangler deploy --secrets-file` on every single deploy — additive, so it can't be wiped by
+  a future deploy the way plain `wrangler deploy` can be. This fixes both possible root
+  causes above at once. **What's left for you to do**:
+  1. Settings → Build configuration → **Build variables and secrets** → add all 5 there, as
+     type Secret: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`, `FINNHUB_KEY`, `KV_REST_API_URL`,
+     `KV_REST_API_TOKEN` (this is a *different* section than the Worker's own "Variables and
+     Secrets" tab you may have used before — that one doesn't feed this script).
+  2. Settings → Build configuration → **Deploy command** → change it from
+     `npx wrangler deploy` to `npm run deploy:ci`.
+  3. Trigger a new deploy (push to this branch, which GitHub Actions will then automatically
+     re-verify — check `.github/workflows/verify-deploy.yml`'s latest run instead of testing
+     by hand).
 - This does **not** block *viewing* the dashboard on Vercel — Vercel is untouched and still
   fully working. It does mean the Cloudflare deployment isn't usable yet for anything that
   touches the database or live quotes, not just the password-gated edit screens.
