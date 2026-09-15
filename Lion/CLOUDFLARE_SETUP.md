@@ -10,12 +10,38 @@ section before redoing any of this from scratch.
 
 - ✅ Worker created and deploying successfully from the `cloudflare-migration` branch
 - ✅ Live at: `https://littlelionfunddashboard.dwu-4ce.workers.dev`
-- ✅ Static site, all API routes, and the cron trigger are deployed and working
-- ✅ 5 secrets added: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`, `FINNHUB_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`
-- ⚠️ **Holdings/Weightings password isn't unlocking yet** — see "Debugging the password" below.
-  This does **not** block viewing the dashboard: every read-only route (Dashboard, Sectors,
-  Performance, Unit Value, live prices) works with no login at all. Only *editing*
-  Holdings/Weightings needs the password to work.
+- ✅ Static site and the Worker itself are deploying correctly — confirmed with real live
+  HTTP checks run from GitHub Actions (`.github/workflows/verify-deploy.yml`, since this
+  sandbox can't reach `*.workers.dev` or `*.vercel.app` directly)
+- ❌ **None of the 5 dashboard secrets are actually reaching the Worker right now** — this is
+  now *confirmed*, not suspected. Live evidence from two separate GitHub Actions runs,
+  including one taken right after a fresh push-triggered redeploy (so it isn't a stale-build
+  issue):
+  - `/api/holdings`, `/api/weightings`, `/api/unitvalue`, `/api/cash` → **HTTP 500**,
+    `{"error":"Invalid URL: /pipeline"}` on Cloudflare (Vercel returns 200 for all of these
+    with the same live data). That error comes from `@upstash/redis` trying to build a
+    request URL from an empty `KV_REST_API_URL` — i.e. the secret is undefined at runtime.
+  - `/api/quote?ticker=AAPL` → `{"error":"Invalid API key."}` — Finnhub itself rejecting
+    whatever `FINNHUB_KEY` currently resolves to.
+  - `/api/credits` → **HTTP 200** on both platforms. This one doesn't depend on any secret
+    (`CREDITS_TEXT` lives in `wrangler.toml`'s `[vars]`), which confirms the Worker, routing,
+    and deploy pipeline are all otherwise fine — this is specifically a secrets problem.
+  - **This is almost certainly the same root cause as the password not unlocking**:
+    `HOLDINGS_PWD`/`WEIGHTINGS_PWD` failing the same way (undefined secret, so no password
+    can ever equal it) is indistinguishable from a wrong password by the API response alone.
+    Once the secrets are actually attached, re-test the password — it may just work.
+- ⬜ **Next action needed from you**: open Settings → Variables and Secrets for this Worker
+  and confirm all 5 are actually listed there right now: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`,
+  `FINNHUB_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`. A fresh redeploy did **not** fix
+  this, which rules out the "secrets don't apply retroactively" theory from earlier in this
+  doc — the far more likely explanation now is that the save didn't actually take, they're
+  attached to the wrong environment (check for a Production/Preview toggle in that settings
+  page), or they're on a different Worker than the one that's live. Re-add them carefully if
+  you're unsure, then let this get re-verified (a push to this branch automatically re-runs
+  the GitHub Actions check above, so no need to test manually first).
+- This does **not** block *viewing* the dashboard on Vercel — Vercel is untouched and still
+  fully working. It does mean the Cloudflare deployment isn't usable yet for anything that
+  touches the database or live quotes, not just the password-gated edit screens.
 - ⬜ Domain not yet purchased/attached
 - ⬜ Not yet cut over from Vercel (Vercel is still live and untouched — this is all safe to
   keep testing without any risk to the production site)
@@ -61,35 +87,34 @@ Vercel uses (no renaming needed, the code checks for these exact names):
 `HOLDINGS_PWD:WEIGHTINGS_PWD` into one when it's missing, so leaving it unset on Cloudflare
 keeps behavior identical to today. Add a real one later if you want, no rush.
 
-## 3. Debugging the password (pick this back up first)
+## 3. Debugging the password (superseded — root cause found, see "Current status" above)
 
 Symptom: entering the Holdings password on the live site says it's wrong.
 
-**Test it the right way first** — through the app's actual password field (Holdings tab →
-type password → Unlock), not by typing it into the browser's address bar. The app's own
-code properly encodes special characters before sending the password
-(`encodeURIComponent(p)` in `checkTabPwd()`); typing a password with an `&`, `#`, `+`, `%`,
-or space directly into a URL bar does **not** get encoded the same way and can silently
-corrupt the password before it even reaches the server — producing a false "wrong password"
-result even if the Cloudflare secret is set correctly. (This was used as a quick diagnostic
-during setup and got `{"ok":false}` — that result is inconclusive if the real password has
-any of those characters in it. Re-test via the real form.)
+**Update**: live testing via GitHub Actions (see above) proved this isn't actually about the
+password at all — none of the 5 dashboard secrets are reaching the Worker right now, so
+`HOLDINGS_PWD`/`WEIGHTINGS_PWD` are undefined server-side and *no* password could ever match,
+regardless of what's typed or how it's encoded. **Fix the missing secrets first** (see
+"Next action needed from you" above); re-test the password only after `/api/holdings` starts
+returning real data instead of a 500.
 
-If the real form still rejects it, check these in order:
-1. **Did a deploy happen *after* the secrets were added?** Cloudflare didn't seem to apply
-   dashboard-added secrets to an already-running deployment — it needed a fresh deploy
-   (see Gotcha #2 below) after the secrets existed. If you add/change a secret, always
-   follow it with a real push to trigger a new deploy.
-2. **Exact variable name** — re-open Settings → Variables and Secrets and check
-   `HOLDINGS_PWD` character-by-character (capitalization, no trailing space in the *name*
-   field). A typo'd name reads as completely unset, which fails the same way as a wrong
-   password.
-3. **Trailing whitespace in the *value*** — when copying the revealed value from Vercel,
-   make sure the copy doesn't grab a trailing newline/space. If unsure, delete and re-add
-   the secret, typing carefully rather than trusting a copy-paste.
-4. If it's still stuck after that, compare against Vercel directly: does the *same*
-   password work on the live Vercel site right now? If not, the password itself (as stored
-   on Vercel) may not be what you think it is.
+The rest of this section is kept for reference in case the password *specifically* still
+fails after the secrets are otherwise confirmed working:
+
+- **Test it the right way** — through the app's actual password field (Holdings tab → type
+  password → Unlock), not by typing it into the browser's address bar. The app's own code
+  properly encodes special characters before sending the password (`encodeURIComponent(p)`
+  in `checkTabPwd()`); typing a password with an `&`, `#`, `+`, `%`, or space directly into a
+  URL bar does **not** get encoded the same way and can silently corrupt the password before
+  it even reaches the server.
+- **Exact variable name** — check `HOLDINGS_PWD` character-by-character (capitalization, no
+  trailing space in the *name* field). A typo'd name reads as completely unset, which fails
+  the same way as a wrong password.
+- **Trailing whitespace in the *value*** — when copying the revealed value from Vercel, make
+  sure the copy doesn't grab a trailing newline/space. If unsure, delete and re-add the
+  secret, typing carefully rather than trusting a copy-paste.
+- Compare against Vercel directly: does the *same* password work on the live Vercel site
+  right now? If not, the password itself (as stored on Vercel) may not be what you think.
 
 ## 4. Gotchas discovered during this setup
 
@@ -106,8 +131,22 @@ If the real form still rejects it, check these in order:
    (whatever you typed when creating it) but `wrangler.toml` originally said
    `little-lion-fund`. This has been fixed in the repo (`wrangler.toml`'s `name` now matches
    `littlelionfunddashboard`) so the warning shouldn't reappear.
-4. **Secrets don't apply retroactively** — adding/changing a secret in the dashboard didn't
-   seem to affect an already-running deployment; it took a fresh deploy to pick it up.
+4. **~~Secrets don't apply retroactively~~ — retested and this wasn't actually the cause.**
+   A fresh push-triggered redeploy was tried specifically to rule this in or out, and the
+   secrets *still* don't show up in `env` afterward (`/api/holdings` still 500s with the same
+   "Invalid URL: /pipeline" error). So a redeploy alone won't fix this — the secrets need to
+   actually be (re-)confirmed present in Settings → Variables and Secrets. See "Current
+   status" at the top of this doc for the live evidence and exact next step.
+5. **A GitHub Actions workflow now verifies both deployments automatically** —
+   `.github/workflows/verify-deploy.yml` runs on every push to this branch (or on demand) and
+   curls the public API routes, the Finnhub-backed quote/history routes, and a wrong-password
+   sanity check on both the live Vercel and Cloudflare URLs, since this repo's own dev
+   sandbox can't reach either `*.vercel.app` or `*.workers.dev` directly. Check its most
+   recent run under the repo's Actions tab any time you want an up-to-date answer on whether
+   Cloudflare's deployment is actually working, without needing to click through the app
+   yourself. It also supports an optional, fully automated real-password check — add
+   `TEST_HOLDINGS_PWD` / `TEST_WEIGHTINGS_PWD` as **your own** repository secrets (Settings →
+   Secrets and variables → Actions) if you want that, entirely outside of this conversation.
 
 ## 5. Test on the workers.dev URL before touching any domain
 
