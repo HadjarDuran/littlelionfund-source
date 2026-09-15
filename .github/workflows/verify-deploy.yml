@@ -11,6 +11,12 @@ jobs:
     env:
       VERCEL_URL: https://littlelionfund-source-5fhe.vercel.app
       CF_URL: https://littlelionfunddashboard.dwu-4ce.workers.dev
+      # `secrets.X` can't be read inside an `if:` expression directly (GitHub
+      # Actions rejects the whole workflow at parse time if you try — that
+      # was silently failing every run here). Mirroring them into job-level
+      # env vars first lets the conditional steps below check env.X instead.
+      TEST_HOLDINGS_PWD: ${{ secrets.TEST_HOLDINGS_PWD }}
+      TEST_WEIGHTINGS_PWD: ${{ secrets.TEST_WEIGHTINGS_PWD }}
     steps:
       - name: Static site root (Cloudflare)
         run: |
@@ -42,25 +48,21 @@ jobs:
           curl -s -w "\nHTTP %{http_code}\n" "$CF_URL/api/auth?pwd=definitely-wrong-xyz123&type=holdings"
 
       - name: Real password test (holdings) — only if secret is set
-        if: ${{ secrets.TEST_HOLDINGS_PWD != '' }}
+        if: ${{ env.TEST_HOLDINGS_PWD != '' }}
         run: |
-          enc=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['PWD_VAL']))")
+          enc=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['TEST_HOLDINGS_PWD']))")
           echo "Testing real HOLDINGS_PWD against both platforms (password value itself is not printed)"
           vc=$(curl -s "$VERCEL_URL/api/auth?pwd=$enc&type=holdings")
           cf=$(curl -s "$CF_URL/api/auth?pwd=$enc&type=holdings")
           echo "Vercel result: $vc"
           echo "Cloudflare result: $cf"
-        env:
-          PWD_VAL: ${{ secrets.TEST_HOLDINGS_PWD }}
 
       - name: Real password test (weightings) — only if secret is set
-        if: ${{ secrets.TEST_WEIGHTINGS_PWD != '' }}
+        if: ${{ env.TEST_WEIGHTINGS_PWD != '' }}
         run: |
-          enc=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['PWD_VAL']))")
+          enc=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['TEST_WEIGHTINGS_PWD']))")
           echo "Testing real WEIGHTINGS_PWD against both platforms (password value itself is not printed)"
           vc=$(curl -s "$VERCEL_URL/api/auth?pwd=$enc&type=weightings")
           cf=$(curl -s "$CF_URL/api/auth?pwd=$enc&type=weightings")
           echo "Vercel result: $vc"
           echo "Cloudflare result: $cf"
-        env:
-          PWD_VAL: ${{ secrets.TEST_WEIGHTINGS_PWD }}
