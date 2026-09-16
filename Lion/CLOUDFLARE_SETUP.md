@@ -10,78 +10,38 @@ section before redoing any of this from scratch.
 
 - ✅ Worker created and deploying successfully from the `cloudflare-migration` branch
 - ✅ Live at: `https://littlelionfunddashboard.dwu-4ce.workers.dev`
-- ✅ Static site and the Worker itself are deploying correctly — confirmed with real live
-  HTTP checks run from GitHub Actions (`.github/workflows/verify-deploy.yml`, since this
-  sandbox can't reach `*.workers.dev` or `*.vercel.app` directly)
-- ❌ **None of the 5 dashboard secrets are actually reaching the Worker right now** — this is
-  *confirmed*, not suspected. Live evidence from GitHub Actions (`.github/workflows/verify-deploy.yml`,
-  run against the real URLs since this dev sandbox can't reach them), including one run taken
-  right after a fresh push-triggered redeploy (so it isn't a stale-build issue):
-  - `/api/holdings`, `/api/weightings`, `/api/unitvalue`, `/api/cash` → **HTTP 500**,
-    `{"error":"Invalid URL: /pipeline"}` on Cloudflare (Vercel returns 200 for all of these
-    with the same live data). That error comes from `@upstash/redis` trying to build a
-    request URL from an empty `KV_REST_API_URL` — i.e. the secret is undefined at runtime.
-  - `/api/quote?ticker=AAPL` → `{"error":"Invalid API key."}` — Finnhub itself rejecting
-    whatever `FINNHUB_KEY` currently resolves to.
-  - `/api/credits` → **HTTP 200** on both platforms. This one doesn't depend on any secret
-    (`CREDITS_TEXT` lives in `wrangler.toml`'s `[vars]`), which confirms the Worker, routing,
-    and deploy pipeline are all otherwise fine — this is specifically a secrets problem.
-  - **This is almost certainly the same root cause as the password not unlocking**:
-    `HOLDINGS_PWD`/`WEIGHTINGS_PWD` failing the same way (undefined secret, so no password
-    can ever equal it) is indistinguishable from a wrong password by the API response alone.
-- **Root cause (per Cloudflare's own docs and reported Workers Builds issues)**: a
-  Git-connected Worker like this one has *two separate* secret stores that look similar in
-  the dashboard —
-  1. **Settings → Build configuration → Build variables and secrets** — only visible to the
-     build script itself (as `process.env`), never bound to the deployed Worker on its own.
-  2. **Settings → Variables and Secrets** (the Worker's own settings) — bound to `env` at
-     runtime, *but* Cloudflare's Git-integration deploys have a known bug/behavior
-     ([workers-sdk#8871](https://github.com/cloudflare/workers-sdk/issues/8871)) where a new
-     deploy can silently wipe secrets set here, even without editing them.
-  Either explains everything observed: the values look "added" somewhere, yet `env` is empty
-  at request time, and a fresh redeploy alone doesn't fix it (already tested — see above).
-- ✅ **Fixed in code, needs one dashboard change from you**: added
-  `Lion/scripts/ci-deploy.sh` (wired up as `npm run deploy:ci`), which reads the 5 secrets
-  from *this build's own environment* and reapplies them with
-  `wrangler deploy --secrets-file` on every single deploy — additive, so it can't be wiped by
-  a future deploy the way plain `wrangler deploy` can be. This fixes both possible root
-  causes above at once. **What's left for you to do**:
-  1. Settings → Build configuration → **Build variables and secrets** → add all 5 there, as
-     type Secret: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`, `FINNHUB_KEY`, `KV_REST_API_URL`,
-     `KV_REST_API_TOKEN` (this is a *different* section than the Worker's own "Variables and
-     Secrets" tab you may have used before — that one doesn't feed this script).
-  2. Settings → Build configuration → **Deploy command** → change it from
-     `npx wrangler deploy` to `npm run deploy:ci`.
-  3. Trigger a new deploy (push to this branch, which GitHub Actions will then automatically
-     re-verify — check `.github/workflows/verify-deploy.yml`'s latest run instead of testing
-     by hand).
-
-- **Alternative path, if you'd rather not use Cloudflare's Git integration at all**:
-  `.github/workflows/deploy.yml` deploys straight from GitHub Actions instead, sidestepping
-  Cloudflare's Git-integration secret-handling entirely (it doesn't touch the two-store
-  question above — it's a different pipeline). **Validated end-to-end by actually running
-  it** (not just written): it correctly runs through checkout, Node 22 setup (wrangler 4.131
-  needs Node ≥22 — caught and fixed a Node 20→22 bug this way), `npm ci`, and starts
-  `wrangler deploy`, failing only at the expected final point —
-  `CLOUDFLARE_API_TOKEN environment variable` not yet set — which is exactly the one secret
-  only you can create. One-time setup, all in GitHub's own UI under
-  Settings → Secrets and variables → Actions → New repository secret:
-  - `CLOUDFLARE_API_TOKEN` — create at Cloudflare dashboard → My Profile → API Tokens →
-    use the "Edit Cloudflare Workers" template
-  - `CLOUDFLARE_ACCOUNT_ID` — visible in the Cloudflare dashboard's URL/sidebar (not
-    sensitive, but convenient to store as a secret here too)
-  - The same 5 app secrets: `HOLDINGS_PWD`, `WEIGHTINGS_PWD`, `FINNHUB_KEY`,
-    `KV_REST_API_URL`, `KV_REST_API_TOKEN`
-  Then disable Cloudflare's own Git integration for this Worker (Settings → Build
-  configuration → disconnect) so the two deploy pipelines don't race each other on every
-  push. This is more setup than the fix above, but avoids depending on Cloudflare's
-  Git-integration behavior at all going forward.
-- This does **not** block *viewing* the dashboard on Vercel — Vercel is untouched and still
-  fully working. It does mean the Cloudflare deployment isn't usable yet for anything that
-  touches the database or live quotes, not just the password-gated edit screens.
+- ✅ **Fully working — confirmed with real live HTTP checks.** `/api/holdings`,
+  `/api/weightings`, `/api/unitvalue`, `/api/cash`, `/api/credits`, `/api/quote`, and
+  `/api/hist` all return HTTP 200 on Cloudflare with data byte-identical to Vercel (same
+  holdings, same cash balances, same unit-value history back to 2012, live Finnhub quotes).
+  Verified via `.github/workflows/verify-deploy.yml` since this dev sandbox can't reach
+  `*.workers.dev`/`*.vercel.app` directly.
+- **Root cause of the earlier outage, for the record**: the 5 secrets (`HOLDINGS_PWD`,
+  `WEIGHTINGS_PWD`, `FINNHUB_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`) needed to be added
+  under Settings → Build configuration → **Build variables and secrets** (a different section
+  than the Worker's own "Variables and Secrets" tab, which doesn't feed the build script) with
+  the Deploy command set to `npm run deploy:ci` (`Lion/scripts/ci-deploy.sh`, which reapplies
+  them via `wrangler deploy --secrets-file` on every deploy). Two real typos also had to be
+  fixed along the way: `KV_REST_APL_TOKEN` → `KV_REST_API_TOKEN` and `KV_REST_APLURL` →
+  `KV_REST_API_URL` ("APL" instead of "API", the second also missing its underscore). Once
+  spelled correctly and saved, everything came up immediately — no further deploy needed.
+- **Alternative path still available, unused**: `.github/workflows/deploy.yml` deploys
+  straight from GitHub Actions instead, entirely bypassing Cloudflare's Git integration.
+  Validated end-to-end (Node 22, `npm ci`, `wrangler deploy`) up to needing a
+  `CLOUDFLARE_API_TOKEN` GitHub secret. Not needed now that the primary path works, but kept
+  as a documented fallback — see the git history of this file for full setup steps if ever
+  needed.
+- The Holdings/Weightings password should now also work correctly through the real app
+  form — it was failing for the same reason the data routes were (undefined secrets), not a
+  wrong password.
 - ⬜ Domain not yet purchased/attached
 - ⬜ Not yet cut over from Vercel (Vercel is still live and untouched — this is all safe to
   keep testing without any risk to the production site)
+- **Worth double-checking, unrelated to the above**: Vercel's live `/api/credits` currently
+  returns `"Not the official Little Lion Fund Dashboard - this is a mockup"`, while
+  Cloudflare's (from `wrangler.toml`) says `"Made by Maximus Weeseman for Luke Alexander and
+  the Little Lion Fund"`. Worth confirming which is the intended production text and aligning
+  the other to match — purely cosmetic, doesn't affect functionality either way.
 
 ## 0. What you'll need
 
