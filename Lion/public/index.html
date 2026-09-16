@@ -457,19 +457,6 @@
       margin-bottom: 4px
     }
 
-    .ls-credits {
-      font-size: 11px;
-      color: #64748b;
-      letter-spacing: .6px;
-      font-style: italic;
-      position: fixed;
-      bottom: 18px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      pointer-events: none
-    }
-
     .ls-keybtn {
       display: none;
       padding: 9px 20px;
@@ -1601,7 +1588,6 @@
           Key</button>
       </div>
       <div class="ls-err" id="ls-err"></div>
-      <div class="ls-credits" id="ls-credits"></div>
     </div>
   </div>
 
@@ -3791,16 +3777,6 @@
       const m = document.querySelector(".cd-menu");
       if (m) m.remove();
     }
-    (async function loadCredits() {
-      try {
-        const r = await fetch('/api/credits');
-        const d = await r.json();
-        const el = document.getElementById('ls-credits');
-        if (el && d && d.text) el.textContent = d.text;
-      } catch (e) { }
-    })();
-
-   
     function uvDateToISO(d) {
       const [m, day, y] = d.split('/');
       return `${y}-${m.padStart(2,'0')}-${day.padStart(2,'0')}`;
