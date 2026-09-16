@@ -18,6 +18,13 @@ async function fetchQuote(ticker, finnhubKey) {
 // Idempotent: re-running it the same day overwrites that day's entry
 // instead of duplicating it, so a retry is safe.
 //
+// Also keeps the current calendar month's row in "unitvalue" itself (the
+// series the Unit Value tab actually displays) up to date with this same
+// number, dated at that month's last calendar day to match the existing
+// hand-entered rows. It only ever touches the *current* month's row, so
+// past months stay exactly as entered; the S&P field is left untouched
+// since this doesn't track the index value, only the fund's own price.
+//
 // Unlike the old Vercel version, this is invoked directly by Cloudflare's
 // scheduler (see worker.js's `scheduled` export) rather than over HTTP, so
 // there's no CRON_SECRET to check — nothing external can reach this at all,
@@ -60,6 +67,16 @@ export async function runNavSnapshot(env) {
     if (idx >= 0) nav[idx] = entry; else nav.push(entry);
     await client.set('nav_daily', nav);
     console.log('NAV snapshot written:', JSON.stringify(entry));
+
+    const now = new Date();
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthKey = `${monthEnd.getMonth() + 1}/${monthEnd.getDate()}/${monthEnd.getFullYear()}`;
+    const unitvalue = (await client.get('unitvalue')) || [];
+    const uvIdx = unitvalue.findIndex(r => r.d === monthKey);
+    if (uvIdx >= 0) unitvalue[uvIdx] = { ...unitvalue[uvIdx], u: unitValue };
+    else unitvalue.push({ d: monthKey, u: unitValue, sp: null });
+    await client.set('unitvalue', unitvalue);
+    console.log('Unit value month row updated:', monthKey, unitValue);
   } catch (error) {
     console.error('NAV snapshot error:', error);
   }
