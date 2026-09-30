@@ -11,9 +11,15 @@ on:
       holdings_json:
         description: Full holdings list as a JSON array
         required: true
+  # Pushing a change to this file registers the workflow with GitHub so it
+  # can be dispatched from a non-default branch; push runs do nothing.
+  push:
+    paths:
+      - .github/workflows/restore-holdings.yml
 
 jobs:
   restore:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       CF_URL: https://littlelionfunddashboard.dwu-4ce.workers.dev
