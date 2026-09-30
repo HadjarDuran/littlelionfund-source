@@ -2463,7 +2463,7 @@
       isOffline = false;
       lastDataUpdate = new Date();
       saveSnapshotCache();
-      updateSummary(true);
+      updateSummary(); // display only — loading data must never write it back
       render();
       if (!timer) timer = setInterval(tick, 1000);
     }
@@ -3689,7 +3689,7 @@
       editIdx = null;
       invalidatePos();
 
-      updateSummary(true);
+      updateSummary();
       await saveHoldings();
 
       // Only the ticker that actually changed needs fresh data — no need to
