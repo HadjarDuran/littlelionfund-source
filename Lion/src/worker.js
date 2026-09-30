@@ -26,7 +26,7 @@ export default {
       case '/api/auth': return handleAuth(request, env);
       case '/api/cash': return handleCash(request, env);
       case '/api/credits': return handleCredits(request, env);
-      case '/api/hist': return handleHist(request, env);
+      case '/api/hist': return handleHist(request, env, ctx);
       case '/api/holdings': return handleHoldings(request, env);
       case '/api/holdings-log': return handleHoldingsLog(request, env);
       case '/api/nav-history': return handleNavHistory(request, env);
