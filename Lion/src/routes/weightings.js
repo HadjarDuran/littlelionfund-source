@@ -11,6 +11,13 @@ export async function handleWeightings(request, env) {
     } else if (request.method === 'POST') {
       if (!(await verify(bearerFrom(request), 'weightings', env))) return json({ error: 'Unauthorized' }, 401);
       const weightings = await request.json();
+      if (!Array.isArray(weightings)) return json({ error: 'Expected a list of weightings' }, 400);
+      if (weightings.length === 0) {
+        const prev = await client.get('weightings');
+        if (Array.isArray(prev) && prev.length > 0) {
+          return json({ error: 'Refusing to replace the existing weightings with an empty list. Reload the page and try again.' }, 409);
+        }
+      }
       await client.set('weightings', weightings);
       return json({ success: true });
     }

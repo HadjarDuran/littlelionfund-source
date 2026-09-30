@@ -14,8 +14,14 @@ export async function handleHoldings(request, env) {
     } else if (request.method === 'POST') {
       if (!(await verify(bearerFrom(request), 'holdings', env))) return json({ error: 'Unauthorized' }, 401);
       const holdings = await request.json();
+      if (!Array.isArray(holdings)) return json({ error: 'Expected a list of holdings' }, 400);
 
       const prevHoldings = (await client.get('holdings')) || [];
+      // A client that failed to load holdings can end up posting its empty
+      // default back — this wiped all 25 positions on 2026-09-24.
+      if (holdings.length === 0 && prevHoldings.length > 0) {
+        return json({ error: 'Refusing to replace the existing holdings with an empty list. Reload the page and try again.' }, 409);
+      }
       const events = diffHoldings(prevHoldings, holdings);
       if (events.length) {
         const now = new Date().toISOString();

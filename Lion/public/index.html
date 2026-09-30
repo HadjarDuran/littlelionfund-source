@@ -1685,6 +1685,10 @@
     const REFRESH_INTERVAL = 120;
     let AUTH_TOKENS = { holdings: null, weightings: null };
     let HOLD = [], CASH_BANK = 0, CASH_BROK = 0;
+    // Set only once each resource has actually been read from the server. Saves
+    // are refused until then — otherwise a failed load leaves these as their
+    // empty defaults, and saving would overwrite the real data with nothing.
+    const LOADED = { holdings: false, cash: false, weightings: false, unitvalue: false };
     let prices = {}, hist = {}, portHist = [];
     let curTab = "dashboard", detailT = null, editIdx = null, deletingIdx = null, removingIdx = null, deletingWeightIdx = null, uvDeletingIdx = null, perfTimeframe = "1 Year", holdingsUnlocked = false, weightingsUnlocked = false, unitvalueUnlocked = false, uvEditIdx = null, allocView = 'stocks', isOffline = false, detailSector = null, sectorTimeframe = "1 Month";
     let lastDataUpdate = null; // when loadAll() last completed successfully — the "Data as of" trust stamp on the Dashboard
@@ -1721,21 +1725,23 @@
           fetch('/api/units', { cache: 'no-store' })
         ]);
         isOffline = false;
-        const holdingsData = await holdingsRes.json();
-        HOLD = Array.isArray(holdingsData) ? holdingsData : [];
-        const cash = await cashRes.json();
-        CASH_BANK = cash.bank || 0;
-        CASH_BROK = cash.brokerage || 0;
-        weightingsData = await weightingsRes.json();
-        if (!weightingsData || weightingsData.length === 0) weightingsData = [];
-        const uvData = await unitvalueRes.json();
-        if (Array.isArray(uvData) && uvData.length > 0) UNIT_HISTORY = uvData;
-        try { const unitsData = await unitsRes.json(); if (unitsData && unitsData.units > 0) UNITS = unitsData.units; } catch (e) { }
+        // A failed or error response keeps whatever was already loaded rather
+        // than falling back to empty — see LOADED.
+        const readJson = async r => { if (!r.ok) return undefined; try { return await r.json(); } catch (e) { return undefined; } };
+        const [holdingsData, cash, wData, uvData, unitsData] = await Promise.all(
+          [holdingsRes, cashRes, weightingsRes, unitvalueRes, unitsRes].map(readJson));
+        if (Array.isArray(holdingsData)) { HOLD = holdingsData; LOADED.holdings = true; }
+        if (cash && typeof cash === 'object' && !cash.error) {
+          CASH_BANK = cash.bank || 0;
+          CASH_BROK = cash.brokerage || 0;
+          LOADED.cash = true;
+        }
+        if (Array.isArray(wData)) { weightingsData = wData; LOADED.weightings = true; }
+        if (Array.isArray(uvData)) { if (uvData.length > 0) UNIT_HISTORY = uvData; LOADED.unitvalue = true; }
+        if (unitsData && unitsData.units > 0) UNITS = unitsData.units;
       } catch (error) {
         console.error('Failed to load data:', error);
         isOffline = true;
-        HOLD = [];
-        weightingsData = [];
       }
     }
 
@@ -1775,7 +1781,14 @@
       return h;
     }
 
+    function refuseUnloadedSave(key, label) {
+      if (LOADED[key]) return false;
+      alert(`Not saved: the ${label} didn't load from the server, so saving now could overwrite the real data. Reload the page and try again.`);
+      return true;
+    }
+
     async function saveUnitValue() {
+      if (refuseUnloadedSave('unitvalue', 'unit value history')) return false;
       try {
         const r = await fetch('/api/unitvalue', {
           method: 'POST',
@@ -1790,18 +1803,26 @@
     }
 
     async function saveHoldings() {
+      if (refuseUnloadedSave('holdings', 'holdings')) return false;
       try {
-        await fetch('/api/holdings', {
+        const r = await fetch('/api/holdings', {
           method: 'POST',
           headers: authHeaders('holdings'),
           body: JSON.stringify(HOLD)
         });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          if (d.error) alert('Holdings not saved: ' + d.error);
+        }
+        return r.ok;
       } catch (error) {
         console.error('Failed to save holdings:', error);
+        return false;
       }
     }
 
     async function saveCash() {
+      if (refuseUnloadedSave('cash', 'cash balances')) return false;
       try {
         const r = await fetch('/api/cash', {
           method: 'POST',
@@ -2959,6 +2980,7 @@
     }
 
     async function saveWeightings() {
+      if (refuseUnloadedSave('weightings', 'weightings')) return false;
       try {
         const r = await fetch('/api/weightings', {
           method: 'POST',

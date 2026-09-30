@@ -42,6 +42,13 @@ export async function runNavSnapshot(env) {
     const units = (typeof unitsRaw === 'number' && unitsRaw > 0) ? unitsRaw : DEFAULT_UNITS;
     const finnhubKey = env.FINNHUB_KEY;
 
+    // No holdings means the data is missing, not that the fund is all cash —
+    // recording cash/units here would write a wildly wrong unit value.
+    if (HOLD.length === 0) {
+      console.error('NAV snapshot: holdings are empty — skipped writing a snapshot');
+      return;
+    }
+
     // Sequential, not parallel — keeps this well inside a free-tier
     // Finnhub key's rate limit even as the holdings list grows.
     let equity = 0;
