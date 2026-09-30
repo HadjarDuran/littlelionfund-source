@@ -35,6 +35,14 @@ jobs:
           done
           echo "::error::The new /api/nav-history POST never went live"; exit 1
 
+      - name: Price history check (what the charts load)
+        run: |
+          for t in $(curl -s "$CF_URL/api/holdings" | python3 -c "import json,sys; print(' '.join(h['t'] for h in json.load(sys.stdin)))") SPY; do
+            code=$(curl -s -D /tmp/hdr -o /tmp/h -w '%{http_code}' "$CF_URL/api/hist?ticker=$t")
+            summary=$(python3 -c "import json; d=json.load(open('/tmp/h')); print(f'{len(d)} days, {d[0][\"date\"]} .. {d[-1][\"date\"]}' if isinstance(d, list) and d else d)" 2>/dev/null || head -c 200 /tmp/h)
+            echo "$t: HTTP $code $(grep -i '^cf-cache-status' /tmp/hdr | tr -d '\r') $summary"
+          done
+
       - name: Repair
         run: |
           if [ -z "$HOLDINGS_PWD" ]; then
@@ -46,13 +54,16 @@ jobs:
 
           base = os.environ['CF_URL']
 
+          # Cloudflare turns away Python's default user agent as a bot.
+          UA = {'User-Agent': 'Mozilla/5.0 (repair-nav-history workflow)'}
+
           def get(path):
-              with urllib.request.urlopen(base + path, timeout=60) as r:
+              with urllib.request.urlopen(urllib.request.Request(base + path, headers=UA), timeout=60) as r:
                   return json.load(r)
 
           def post(path, body, token):
               req = urllib.request.Request(base + path, data=json.dumps(body).encode(), method='POST',
-                  headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token})
+                  headers={**UA, 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token})
               try:
                   with urllib.request.urlopen(req, timeout=60) as r:
                       return r.status, r.read().decode()
