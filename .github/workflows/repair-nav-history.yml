@@ -38,7 +38,7 @@ jobs:
       - name: Price history check (what the charts load)
         run: |
           for t in $(curl -s "$CF_URL/api/holdings" | python3 -c "import json,sys; print(' '.join(h['t'] for h in json.load(sys.stdin)))") SPY; do
-            code=$(curl -s -m 60 -D /tmp/hdr -o /tmp/h -w '%{http_code}' "$CF_URL/api/hist?ticker=$t")
+            code=$(curl -s -m 30 -D /tmp/hdr -o /tmp/h -w '%{http_code}' "$CF_URL/api/hist?ticker=$t")
             summary=$(python3 -c "import json; d=json.load(open('/tmp/h')); print(f'{len(d)} days, {d[0][\"date\"]} .. {d[-1][\"date\"]}' if isinstance(d, list) and d else d)" 2>/dev/null || head -c 200 /tmp/h)
             echo "$t: HTTP $code $(grep -i '^cf-cache-status' /tmp/hdr | tr -d '\r') $summary"
           done

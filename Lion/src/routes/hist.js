@@ -15,10 +15,14 @@ const CORS = {
 // stale, and still served if a refresh fails — a chart only goes empty if a
 // ticker has never once loaded successfully.
 const FRESH_MS = 6 * 60 * 60 * 1000;
+// Stooq in particular can stall without ever answering; without a cutoff the
+// request (and the chart waiting on it) hangs until Cloudflare kills it.
+const UPSTREAM_TIMEOUT_MS = 8000;
 
 async function fetchStooq(ticker) {
   const r = await fetch(`https://stooq.com/q/d/l/?s=${ticker}.US&i=d`, {
-    headers: { 'User-Agent': 'Mozilla/5.0' }
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
   const text = await r.text();
   const lines = text.trim().split('\n');
@@ -44,7 +48,7 @@ async function fetchYahoo(ticker) {
     try {
       const r = await fetch(
         `https://${host}.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${from}&period2=${to}&interval=1d`,
-        { headers: { 'User-Agent': 'Mozilla/5.0' } }
+        { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) }
       );
       if (!r.ok) continue;
       const body = await r.json();
