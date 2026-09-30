@@ -35,6 +35,13 @@ jobs:
             echo "Cloudflare: HTTP $cf"; cat /tmp/cf_body; echo
           done
 
+      - name: Holdings change log and daily NAV history (Cloudflare)
+        run: |
+          echo "== /api/holdings-log =="
+          curl -s "$CF_URL/api/holdings-log"; echo
+          echo "== /api/nav-history =="
+          curl -s "$CF_URL/api/nav-history"; echo
+
       - name: Live quote + history via Finnhub (Cloudflare)
         run: |
           set -x
