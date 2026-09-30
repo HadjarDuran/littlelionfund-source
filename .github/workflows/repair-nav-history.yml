@@ -29,7 +29,7 @@ jobs:
       - name: Wait for the NAV correction endpoint to be deployed
         run: |
           for i in $(seq 1 40); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$CF_URL/api/nav-history")
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" -X POST "$CF_URL/api/nav-history")
             if [ "$code" = "401" ]; then echo "Endpoint is live"; exit 0; fi
             echo "Not deployed yet (HTTP $code), waiting..."; sleep 15
           done
@@ -38,7 +38,7 @@ jobs:
       - name: Price history check (what the charts load)
         run: |
           for t in $(curl -s "$CF_URL/api/holdings" | python3 -c "import json,sys; print(' '.join(h['t'] for h in json.load(sys.stdin)))") SPY; do
-            code=$(curl -s -D /tmp/hdr -o /tmp/h -w '%{http_code}' "$CF_URL/api/hist?ticker=$t")
+            code=$(curl -s -m 60 -D /tmp/hdr -o /tmp/h -w '%{http_code}' "$CF_URL/api/hist?ticker=$t")
             summary=$(python3 -c "import json; d=json.load(open('/tmp/h')); print(f'{len(d)} days, {d[0][\"date\"]} .. {d[-1][\"date\"]}' if isinstance(d, list) and d else d)" 2>/dev/null || head -c 200 /tmp/h)
             echo "$t: HTTP $code $(grep -i '^cf-cache-status' /tmp/hdr | tr -d '\r') $summary"
           done
