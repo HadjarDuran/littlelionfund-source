@@ -1,0 +1,136 @@
+name: Repair NAV history
+
+# Rebuilds daily NAV entries that were recorded while the holdings list was
+# missing (their total equity is exactly the cash balance, i.e. no stocks),
+# using each day's real closing prices from /api/hist and the current
+# holdings. Before writing anything it recomputes the last good day the same
+# way and stops if that doesn't match what was recorded, so a mismatch in
+# holdings or prices can't write wrong numbers. Also fixes the Unit Value
+# tab's row that picked up the same wrong value.
+#
+# Logs in with the TEST_HOLDINGS_PWD repository secret, like the restore tool.
+
+on:
+  workflow_dispatch: {}
+  # Pushing a change to this file registers the workflow with GitHub so it
+  # can be dispatched from a non-default branch; push runs do nothing.
+  push:
+    paths:
+      - .github/workflows/repair-nav-history.yml
+
+jobs:
+  repair:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      CF_URL: https://littlelionfunddashboard.dwu-4ce.workers.dev
+      HOLDINGS_PWD: ${{ secrets.TEST_HOLDINGS_PWD }}
+    steps:
+      - name: Wait for the NAV correction endpoint to be deployed
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$CF_URL/api/nav-history")
+            if [ "$code" = "401" ]; then echo "Endpoint is live"; exit 0; fi
+            echo "Not deployed yet (HTTP $code), waiting..."; sleep 15
+          done
+          echo "::error::The new /api/nav-history POST never went live"; exit 1
+
+      - name: Repair
+        run: |
+          if [ -z "$HOLDINGS_PWD" ]; then
+            echo "::error::Add a TEST_HOLDINGS_PWD repository secret (the holdings password) first."
+            exit 1
+          fi
+          python3 - <<'EOF'
+          import json, os, sys, urllib.parse, urllib.request
+
+          base = os.environ['CF_URL']
+
+          def get(path):
+              with urllib.request.urlopen(base + path, timeout=60) as r:
+                  return json.load(r)
+
+          def post(path, body, token):
+              req = urllib.request.Request(base + path, data=json.dumps(body).encode(), method='POST',
+                  headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      return r.status, r.read().decode()
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode()
+
+          holdings = get('/api/holdings')
+          cash = get('/api/cash')
+          units = get('/api/units')['units']
+          nav = get('/api/nav-history')
+          uv = get('/api/unitvalue')
+          assert holdings, 'Holdings are empty - restore them first'
+          cash_total = (cash.get('bank') or 0) + (cash.get('brokerage') or 0)
+          bad_uv_value = round(cash_total / units, 4)
+          print(f'{len(holdings)} holdings, cash {cash_total:.2f}, units {units}')
+
+          bad = [e for e in nav if abs(e['totalEquity'] - cash_total) < 0.01]
+          if not bad:
+              print('No NAV entries recorded without stocks - nothing to fix in the daily history')
+          good_before = [e for e in nav if bad and e['date'] < bad[0]['date'] and e not in bad]
+
+          closes = {}
+          for h in holdings:
+              hist = get('/api/hist?ticker=' + urllib.parse.quote(h['t']))
+              assert isinstance(hist, list) and hist, f"No price history for {h['t']}"
+              closes[h['t']] = sorted((d['date'], d['close']) for d in hist)
+
+          def equity_on(date):
+              total = 0
+              for h in holdings:
+                  prior = [c for d, c in closes[h['t']] if d <= date]
+                  assert prior, f"No close for {h['t']} on or before {date}"
+                  total += prior[-1] * h['sh']
+              return total + cash_total
+
+          fixes = []
+          if bad:
+              check = good_before[-1]
+              redo = equity_on(check['date'])
+              drift = abs(redo - check['totalEquity']) / check['totalEquity']
+              print(f"Check: {check['date']} recorded {check['totalEquity']:.2f}, recomputed {redo:.2f} ({drift:.3%} apart)")
+              if drift > 0.005:
+                  sys.exit('Recomputed value for the last good day is too far from what was recorded - not writing anything')
+              for e in bad:
+                  eq = equity_on(e['date'])
+                  fixes.append({'date': e['date'], 'unitValue': round(eq / units, 4), 'totalEquity': round(eq, 2),
+                                'spy': e.get('spy'), 'missingQuotes': []})
+                  print(f"{e['date']}: {e['unitValue']} -> {fixes[-1]['unitValue']}  (equity {e['totalEquity']} -> {fixes[-1]['totalEquity']})")
+
+          enc = urllib.parse.quote(os.environ['HOLDINGS_PWD'], safe='')
+          token = get(f'/api/auth?pwd={enc}&type=holdings').get('token')
+          assert token, 'The holdings password in TEST_HOLDINGS_PWD was rejected'
+
+          if fixes:
+              code, body = post('/api/nav-history', fixes, token)
+              print('nav-history:', code, body)
+              assert code == 200
+
+          # Unit Value tab: the current month's row picked up the same wrong value.
+          latest = max(fixes, key=lambda f: f['date'])['unitValue'] if fixes else None
+          if latest is None:
+              good = [e for e in get('/api/nav-history') if abs(e['totalEquity'] - cash_total) >= 0.01]
+              latest = good[-1]['unitValue'] if good else None
+          changed = False
+          for row in uv:
+              if row.get('u') == bad_uv_value and latest:
+                  print(f"Unit Value row {row['d']}: {row['u']} -> {latest}")
+                  row['u'] = latest
+                  changed = True
+          if changed:
+              code, body = post('/api/unitvalue', uv, token)
+              print('unitvalue:', code, body)
+              assert code == 200
+          else:
+              print('No Unit Value rows needed fixing')
+
+          print('--- after repair ---')
+          for e in get('/api/nav-history')[-8:]:
+              print(e)
+          print(get('/api/unitvalue')[-3:])
+          EOF
