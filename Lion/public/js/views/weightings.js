@@ -4,9 +4,11 @@
 // ---------------------------------------------------------------------------
 
 VIEWS.weightings = {
-  head: () => ({ title: 'Weightings', sub: isUnlocked('weightings') ? 'Sector targets' : 'Locked' }),
+  head: () => ({ title: 'Weightings', sub: 'Sector targets' }),
   render(el) {
-    if (!isUnlocked('weightings')) return lockGate(el, 'weightings', 'Weightings', () => render());
+    // Everyone sees the targets; inputs, add/remove and Save only appear
+    // after the weightings password (and the server re-checks it on save).
+    const edit = isUnlocked('weightings');
     const W = S.weightings.map(w => ({ s: w.s, p: +w.p || 0, sp: +w.sp || 0 }));
     let dirty = false;
 
@@ -28,24 +30,27 @@ VIEWS.weightings = {
       const sumP = W.reduce((s, w) => s + w.p, 0), sumSp = W.reduce((s, w) => s + w.sp, 0);
       const used = new Set(W.map(w => w.s));
       $('#w-table').innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('scale')}Sector targets</div>
-        <div class="card-sub">Target and S&amp;P weights are typed in. "Now" is calculated live from holdings (share of invested money).</div><div class="spacer"></div>
-        <button class="btn ghost sm" id="w-add" ${used.size >= Object.keys(SECTORS).length ? 'disabled' : ''}>${icon('plus', 'sm')}Add sector</button>
-        <button class="btn primary sm" id="w-save" ${dirty ? '' : 'disabled'}>${icon('save', 'sm')}Save</button></div>
-      <div class="table-wrap"><table class="t"><thead><tr><th class="left">Sector</th><th>Now</th><th style="width:120px">Target %</th><th style="width:120px">S&amp;P 500 %</th><th>Target vs. S&amp;P</th><th>Drift from target</th><th title="Target % × invested total, the spreadsheet's Proposed $">Target $</th><th title="Buy (+) or trim (−) to reach the target, the spreadsheet's Change $">To rebalance</th><th></th></tr></thead><tbody>
+        <div class="card-sub">Target and S&amp;P weights are set by the fund managers. "Now" is calculated live from holdings (share of invested money).</div><div class="spacer"></div>
+        ${edit ? `<button class="btn ghost sm" id="w-add" ${used.size >= Object.keys(SECTORS).length ? 'disabled' : ''}>${icon('plus', 'sm')}Add sector</button>
+        <button class="btn primary sm" id="w-save" ${dirty ? '' : 'disabled'}>${icon('save', 'sm')}Save</button>` : editBtn('weightings', 'Edit targets')}</div>
+      <div class="table-wrap"><table class="t"><thead><tr><th class="left">Sector</th><th>Now</th><th style="width:120px">Target %</th><th style="width:120px">S&amp;P 500 %</th><th>Target vs. S&amp;P</th><th>Drift from target</th><th title="Target % × invested total, the spreadsheet's Proposed $">Target $</th><th title="Buy (+) or trim (−) to reach the target, the spreadsheet's Change $">To rebalance</th>${edit ? '<th></th>' : ''}</tr></thead><tbody>
         ${W.map((w, i) => {
           const now = cur(w.s), drift = now - w.p;
           return `<tr><td class="left"><div class="row" style="gap:8px"><span class="dot" style="background:${sectorColor(w.s)}"></span>
-              <select class="select input sm" data-i="${i}" data-f="s" style="width:220px">${Object.keys(SECTORS).filter(s => s === w.s || !used.has(s)).map(s => `<option ${s === w.s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div></td>
+              ${edit ? `<select class="select input sm" data-i="${i}" data-f="s" style="width:220px">${Object.keys(SECTORS).filter(s => s === w.s || !used.has(s)).map(s => `<option ${s === w.s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>` : `<span class="strong">${esc(w.s)}</span>`}</div></td>
             <td class="strong">${now.toFixed(1)}%</td>
-            <td><input class="input sm" type="number" step="0.1" min="0" data-i="${i}" data-f="p" value="${w.p}" style="text-align:right"/></td>
-            <td><input class="input sm" type="number" step="0.1" min="0" data-i="${i}" data-f="sp" value="${w.sp}" style="text-align:right"/></td>
+            <td>${edit ? `<input class="input sm" type="number" step="0.1" min="0" data-i="${i}" data-f="p" value="${w.p}" style="text-align:right"/>` : `${w.p}%`}</td>
+            <td>${edit ? `<input class="input sm" type="number" step="0.1" min="0" data-i="${i}" data-f="sp" value="${w.sp}" style="text-align:right"/>` : `<span class="muted">${w.sp}%</span>`}</td>
             <td class="${signCls(w.p - w.sp)}">${fmt.pct(w.p - w.sp, 1).replace('%', ' pts')}</td>
             <td>${Math.abs(drift) < 0.05 ? '<span class="muted">on target</span>' : `<span class="pill ${Math.abs(drift) > 3 ? 'neg' : 'neu'}" title="${drift > 0 ? 'Overweight' : 'Underweight'} vs. target">${drift > 0 ? 'Over' : 'Under'} ${Math.abs(drift).toFixed(1)} pts</span>`}</td>
             <td class="muted">${fmt.usd(w.p / 100 * eqTotal, 0)}</td>
             <td class="${signCls(w.p / 100 * eqTotal - now / 100 * eqTotal)} strong">${fmt.usdSigned(w.p / 100 * eqTotal - now / 100 * eqTotal).replace('.00', '')}</td>
-            <td><button class="icon-btn" data-rm="${i}" aria-label="Remove ${esc(w.s)}">${icon('trash-2', 'sm')}</button></td></tr>`;
+            ${edit ? `<td><button class="icon-btn" data-rm="${i}" aria-label="Remove ${esc(w.s)}">${icon('trash-2', 'sm')}</button></td>` : ''}</tr>`;
         }).join('')}</tbody>
-        <tfoot><tr><td class="left">Total</td><td>${W.reduce((s, w) => s + cur(w.s), 0).toFixed(1)}%</td><td class="${Math.abs(sumP - 100) > 0.5 ? 'neg' : ''}">${sumP.toFixed(1)}%</td><td class="${Math.abs(sumSp - 100) > 0.5 ? 'neg' : ''}">${sumSp.toFixed(1)}%</td><td colspan="2" class="hint" style="text-align:left">${Math.abs(sumP - 100) > 0.5 ? 'Targets should add up to 100%' : ''}</td><td>${fmt.usd(sumP / 100 * eqTotal, 0)}</td><td colspan="2"></td></tr></tfoot></table></div>`;
+        <tfoot><tr><td class="left">Total</td><td>${W.reduce((s, w) => s + cur(w.s), 0).toFixed(1)}%</td><td class="${Math.abs(sumP - 100) > 0.5 ? 'neg' : ''}">${sumP.toFixed(1)}%</td><td class="${Math.abs(sumSp - 100) > 0.5 ? 'neg' : ''}">${sumSp.toFixed(1)}%</td><td colspan="2" class="hint" style="text-align:left">${Math.abs(sumP - 100) > 0.5 ? 'Targets should add up to 100%' : ''}</td><td>${fmt.usd(sumP / 100 * eqTotal, 0)}</td><td colspan="${edit ? 2 : 1}"></td></tr></tfoot></table></div>`;
+      const eb = el.querySelector('[data-edit]');
+      if (eb) eb.onclick = async () => { if (await unlockModal('weightings', 'Weightings')) render(); };
+      if (!edit) { drawBars(cur); return; }
       $$('[data-f]', el).forEach(inp => inp.onchange = () => {
         const w = W[+inp.dataset.i];
         w[inp.dataset.f] = inp.dataset.f === 's' ? inp.value : Math.max(0, +parseFloat(inp.value).toFixed(2) || 0);

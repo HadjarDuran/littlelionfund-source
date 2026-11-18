@@ -11,9 +11,11 @@ const NAV = [
   { id: 'performance', label: 'Performance', icon: 'chart-line', key: '2' },
   { id: 'sectors', label: 'Sectors', icon: 'layers', key: '3' },
   { id: 'activity', label: 'Activity', icon: 'history', key: '4' },
-  { id: 'holdings', label: 'Holdings', icon: 'briefcase', key: '5', manage: 'holdings' },
-  { id: 'weightings', label: 'Weightings', icon: 'scale', key: '6', manage: 'weightings' },
-  { id: 'unitvalue', label: 'Unit Value', icon: 'coins', key: '7', manage: 'holdings' },
+  // Weightings and Unit Value are readable by everyone; editing them asks for
+  // the password on the page itself. Holdings is locked entirely.
+  { id: 'weightings', label: 'Weightings', icon: 'scale', key: '5' },
+  { id: 'unitvalue', label: 'Unit Value', icon: 'coins', key: '6' },
+  { id: 'holdings', label: 'Holdings', icon: 'briefcase', key: '7', manage: 'holdings' },
 ];
 const REFRESH_SECONDS = 120;
 let route = { view: 'dashboard', params: [] };

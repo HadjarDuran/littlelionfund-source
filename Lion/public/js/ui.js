@@ -127,6 +127,44 @@ function lockGate(el, type, label, onUnlocked) {
   };
 }
 
+// Password prompt for editing a page anyone can view. Resolves true once
+// unlocked. (The server checks the resulting token on every save, so the
+// page's read-only mode isn't the only thing stopping an edit.)
+function unlockModal(type, label) {
+  if (isUnlocked(type)) return Promise.resolve(true);
+  return new Promise(resolve => {
+    let done = false;
+    const finish = (ok, close) => { if (done) return; done = true; resolve(ok); close && close(); };
+    const m = openModal({
+      title: `Edit ${label}`, icon: 'lock',
+      body: `<p class="text-2" style="font-size:14px;line-height:1.55">Everyone can view this page. Changes need the manager password.</p>
+        <form class="stack" style="gap:8px" autocomplete="off" id="unlock-form">
+          <input class="input" type="password" placeholder="Password" autocomplete="current-password" aria-label="Password"/>
+          <div class="hint err-msg" style="color:var(--neg);min-height:18px"></div>
+        </form>`,
+      actions: [
+        { label: 'Cancel', onClick: c => finish(false, c) },
+        { label: 'Unlock editing', cls: 'primary', icon: 'lock-open', onClick: () => m.root.querySelector('#unlock-form').requestSubmit() },
+      ],
+      onOpen: (root, close) => {
+        const form = root.querySelector('#unlock-form'), inp = form.querySelector('input'), msg = form.querySelector('.err-msg');
+        form.onsubmit = async e => {
+          e.preventDefault();
+          msg.textContent = '';
+          const ok = await unlock(type, inp.value);
+          if (ok) { toast(`${label}: editing unlocked`); renderRail(); finish(true, close); }
+          else { msg.textContent = 'Incorrect password'; inp.classList.add('err'); const md = root.querySelector('.modal'); md.classList.remove('shake'); void md.offsetWidth; md.classList.add('shake'); inp.select(); }
+        };
+      },
+    });
+    const obs = new MutationObserver(() => { if (!document.body.contains(m.root)) { obs.disconnect(); finish(false); } });
+    obs.observe(document.body, { childList: true });
+  });
+}
+const editBtn = (scope, text = 'Edit') => isUnlocked(scope)
+  ? `<span class="badge" style="height:30px;padding:0 10px">${icon('lock-open', 'xs')}Editing unlocked</span>`
+  : `<button class="btn ghost sm" data-edit>${icon('pencil', 'sm')}${text}</button>`;
+
 // ---- sortable tables ----
 function sortBy(rows, key, dir) {
   const m = dir === 'asc' ? 1 : -1;

@@ -65,10 +65,12 @@ This reads and writes the live data.
 | Sectors | `#/sectors`, `#/sectors/Name` | Everyone: each sector vs its SPDR sector ETF and vs target weight |
 | Activity | `#/activity` | Everyone: every trade since 2012, realized gains by year, past holdings, data-quality notes |
 | Holdings | `#/holdings` | Managers (password): Add transaction, edit positions, cash and units |
-| Weightings | `#/weightings` | Managers (weightings password): sector targets vs actual vs S&P, with $ to rebalance |
-| Unit Value | `#/unitvalue` | Managers (holdings password): the official month-end unit value record; flags missing months and likely typos |
+| Weightings | `#/weightings` | Everyone can view sector targets vs actual vs S&P, with $ to rebalance. Editing needs the weightings password |
+| Unit Value | `#/unitvalue` | Everyone can view the official month-end unit value record (flags missing months and likely typos). Adding or correcting months needs the holdings password |
 
 Keyboard: `⌘K` or `/` search, `1`–`7` switch pages, `[` collapse the nav.
+
+Read-only mode is only the visible part of the protection: every write route in `Lion/src/routes/` checks the password token on the server, so nothing can be changed without the password even by calling the API directly.
 
 ## API (`Lion/src/routes/`)
 

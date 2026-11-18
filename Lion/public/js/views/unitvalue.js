@@ -4,9 +4,11 @@
 // ---------------------------------------------------------------------------
 
 VIEWS.unitvalue = {
-  head: () => ({ title: 'Unit Value', sub: isUnlocked('holdings') ? `${S.uv.length} months recorded` : 'Locked' }),
+  head: () => ({ title: 'Unit Value', sub: `${S.uv.length} months recorded` }),
   render(el) {
-    if (!isUnlocked('holdings')) return lockGate(el, 'unitvalue', 'Unit Value', () => render());
+    // Everyone sees the record; adding, correcting and deleting months needs
+    // the holdings password (and the server re-checks it on every save).
+    const edit = isUnlocked('holdings');
     const fs = fundSeries();
     const rows = S.uv.map((r, i) => ({ ...r, i, iso: dt.fromMDY(r.d) })).sort((a, b) => a.iso.localeCompare(b.iso));
     let editIdx = null;
@@ -32,14 +34,16 @@ VIEWS.unitvalue = {
       <div id="uv-chart"></div>
       <div class="grid g-main" style="align-items:start">
         <div class="card" id="uv-table"></div>
-        <div class="card"><div class="card-h"><div class="card-t" id="uv-form-t">${icon('plus')}Add month</div></div>
+        ${edit ? `<div class="card"><div class="card-h"><div class="card-t" id="uv-form-t">${icon('plus')}Add month</div></div>
           <form class="card-b stack" id="uv-form" style="gap:12px">
             <div class="field"><label for="uv-d">Month-end date</label><input class="input" id="uv-d" type="date" value="${latest ? nextMonthEnd(latest.iso) : ''}"/></div>
             <div class="field"><label for="uv-u">Unit value ($)</label><input class="input" id="uv-u" type="number" step="0.0001" placeholder="e.g. ${live.toFixed(2)}"/>
               <div class="hint"><a href="#" id="uv-use-live">Use live estimate (${fmt.usd(live)})</a></div></div>
             <div class="field"><label for="uv-sp">S&amp;P 500 index level (optional)</label><input class="input" id="uv-sp" type="number" step="0.01" placeholder="e.g. 6800.00"/></div>
             <div class="row"><button class="btn primary" type="submit" style="flex:1">${icon('check', 'sm')}<span id="uv-btn-l">Add month</span></button><button class="btn ghost" type="button" id="uv-cancel" hidden>Cancel</button></div>
-          </form></div>
+          </form></div>` : `<div class="card"><div class="card-h"><div class="card-t">${icon('pencil')}Update the record</div></div>
+          <div class="card-b stack" style="gap:12px"><p class="hint" style="font-size:13px;line-height:1.55">Fund managers add each month-end unit value after the statement arrives, and can correct earlier months.</p>
+          ${editBtn('holdings', 'Add or correct a month')}</div></div>`}
       </div></div>`;
 
     const card = chartCard($('#uv-chart'), {
@@ -50,18 +54,19 @@ VIEWS.unitvalue = {
 
     function drawTable() {
       const list = [...rows].reverse();
-      $('#uv-table').innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('table')}Monthly record</div><div class="card-sub">${rows.length} months · click a row to edit</div></div>
-        <div class="table-wrap" style="max-height:520px"><table class="t"><thead><tr><th class="left">Month-end</th><th>Unit value</th><th>Month change</th><th>Since start</th><th>S&amp;P 500</th><th></th></tr></thead><tbody>
+      $('#uv-table').innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('table')}Monthly record</div><div class="card-sub">${rows.length} months${edit ? ' · click a row to edit' : ''}</div></div>
+        <div class="table-wrap" style="max-height:520px"><table class="t"><thead><tr><th class="left">Month-end</th><th>Unit value</th><th>Month change</th><th>Since start</th><th>S&amp;P 500</th>${edit ? '<th></th>' : ''}</tr></thead><tbody>
         ${list.map((r, k) => {
           const p = list[k + 1];
           const mc = p ? (r.u / p.u - 1) * 100 : null;
           const yearBreak = p && p.iso.slice(0, 4) !== r.iso.slice(0, 4);
-          return `<tr class="click" data-i="${r.i}" style="${yearBreak ? 'box-shadow:inset 0 -2px 0 var(--border-strong)' : ''}${editIdx === r.i ? ';background:var(--accent-soft)' : ''}">
+          return `<tr class="${edit ? 'click' : ''}" data-i="${r.i}" style="${yearBreak ? 'box-shadow:inset 0 -2px 0 var(--border-strong)' : ''}${editIdx === r.i ? ';background:var(--accent-soft)' : ''}">
             <td class="left muted">${dt.long(r.iso)}${spikes.has(r.i) ? ' <span class="badge warn" title="Jumps more than 10% and reverses the next month. Worth checking this entry for a typo.">check</span>' : ''}</td><td class="strong">${fmt.usd(r.u)}</td>
             <td class="${signCls(mc)}">${mc != null ? fmt.pct(mc) : '—'}</td><td class="${signCls(r.u - first.u)}">${fmt.pct((r.u / first.u - 1) * 100, 1)}</td>
             <td class="muted">${r.sp ? r.sp.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}</td>
-            <td><button class="icon-btn" data-del="${r.i}" aria-label="Delete ${dt.long(r.iso)}">${icon('trash-2', 'sm')}</button></td></tr>`;
+            ${edit ? `<td><button class="icon-btn" data-del="${r.i}" aria-label="Delete ${dt.long(r.iso)}">${icon('trash-2', 'sm')}</button></td>` : ''}</tr>`;
         }).join('')}</tbody></table></div>`;
+      if (!edit) return;
       $$('tr[data-i]', el).forEach(tr => tr.onclick = e => { if (!e.target.closest('[data-del]')) startEdit(+tr.dataset.i); });
       $$('[data-del]', el).forEach(b => b.onclick = async e => {
         e.stopPropagation();
@@ -78,6 +83,9 @@ VIEWS.unitvalue = {
       $('#uv-btn-l').textContent = 'Update'; $('#uv-cancel').hidden = false;
       drawTable(); $('#uv-u').focus();
     }
+    const eb = el.querySelector('[data-edit]');
+    if (eb) eb.onclick = async () => { if (await unlockModal('unitvalue', 'Unit Value')) render(); };
+    if (!edit) { drawTable(); return () => card.destroy(); }
     $('#uv-cancel').onclick = () => { editIdx = null; render(); };
     $('#uv-use-live').onclick = e => { e.preventDefault(); $('#uv-u').value = live.toFixed(2); };
     $('#uv-form').onsubmit = async e => {
