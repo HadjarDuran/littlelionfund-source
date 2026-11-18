@@ -23,7 +23,8 @@ VIEWS.sectors = {
 
     el.innerHTML = `<div class="view stack">
       <div class="card"><div class="card-h"><div><div class="card-t">${icon('target')}Sector returns vs. sector benchmarks</div>
-        <div class="card-sub">Time-weighted return of each sector's current holdings vs. its SPDR sector ETF (price return)</div></div><div class="spacer"></div><div id="sec-range"></div></div>
+        <div class="card-sub">Time-weighted return of each sector's current holdings vs. its SPDR sector ETF (price return)</div></div><div class="spacer"></div><div id="sec-range"></div>
+        <a class="btn ghost sm" href="#/debrief">${icon('presentation', 'sm')}Start sector debrief</a></div>
         <div id="sec-table" style="padding-top:10px"></div></div>
       <div class="stk-grid stagger" id="sec-cards" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
     </div>`;
@@ -86,7 +87,7 @@ function renderSectorDetail(el, sector) {
       <div class="card kpi"><div class="kpi-label">${icon('wallet')}Market value</div><div class="kpi-value tabular">${cu(g.val)}</div><div class="kpi-foot">${g.weight.toFixed(1)}% of invested${tw ? ` · target ${tw.p}%` : ''}</div></div>
       <div class="card kpi"><div class="kpi-label">${icon('trending-up')}Unrealized gain</div><div class="kpi-value tabular ${signCls(g.pnl)}">${cu(g.pnl, 'usdSigned')}</div><div class="kpi-foot">${fmt.pct(g.pnlPct)} on ${fmt.usd(g.cost, 0)} cost</div></div>
       <div class="card kpi"><div class="kpi-label">${icon('calendar')}Today</div><div class="kpi-value tabular ${signCls(g.day)}">${cu(g.day, 'usdSigned')}</div><div class="kpi-foot">${g.n} holdings</div></div>
-      <div class="card kpi"><div class="kpi-label">${icon('target')}Benchmark</div><div class="kpi-value" style="font-size:18px">${esc(sectorBench(sector).join(' + '))}</div><div class="kpi-foot">${esc(sectorBenchName(sector))}</div></div>
+      <a class="card kpi interactive" href="#/debrief/${encodeURIComponent(sector)}" style="color:inherit"><div class="kpi-label">${icon('presentation')}Debrief this sector</div><div class="kpi-value" style="font-size:18px">Step through ${g.n} stock${g.n > 1 ? 's' : ''}</div><div class="kpi-foot">Each stock vs. the whole sector</div></a>
     </div>
     <div id="sec-chart"></div>
     <div class="card"><div class="card-h bordered"><div class="card-t">${icon('briefcase')}Holdings in ${esc(sector)}</div></div>

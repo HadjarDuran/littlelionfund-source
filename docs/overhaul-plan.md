@@ -92,3 +92,8 @@ data, no indicators.
 - Oct 2025 unit value is $67.88 between $58.12 (Sep) and $58.12 (Nov). Likely a typo.
 - Recommended Weightings, column E ("S&P in LLF") doesn't add to 100%. The lower table (S&P weight ÷ 0.955) does, and that's what the preview uses.
 - The ROI tab's "33.9% annualized" is gain ÷ weighted invested capital ÷ years (not compounded). By unit value the fund is +448% since May 2012, about 12.5%/yr compounded, vs. the S&P 500's +455% (price only).
+
+## Round 3 (2026-11-18): short-term prices and the sector debrief
+
+- [x] 1D / 1W views from Yahoo Finance's free intraday bars (`/api/intraday`), cached minutes and expiring within 24 h. Verified on production.
+- [x] Sector debrief page (`#/debrief/<sector>/<ticker>`) for the morning meeting: each stock on the left, the whole sector (value-weighted) on the right, keyboard stepping, full-screen Present mode.

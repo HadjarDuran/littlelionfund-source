@@ -10,12 +10,13 @@ const NAV = [
   { id: 'dashboard', label: 'Overview', icon: 'layout-dashboard', key: '1' },
   { id: 'performance', label: 'Performance', icon: 'chart-line', key: '2' },
   { id: 'sectors', label: 'Sectors', icon: 'layers', key: '3' },
-  { id: 'activity', label: 'Activity', icon: 'history', key: '4' },
+  { id: 'debrief', label: 'Sector debrief', icon: 'presentation', key: '4' },
+  { id: 'activity', label: 'Activity', icon: 'history', key: '5' },
   // Weightings and Unit Value are readable by everyone; editing them asks for
   // the password on the page itself. Holdings is locked entirely.
-  { id: 'weightings', label: 'Weightings', icon: 'scale', key: '5' },
-  { id: 'unitvalue', label: 'Unit Value', icon: 'coins', key: '6' },
-  { id: 'holdings', label: 'Holdings', icon: 'briefcase', key: '7', manage: 'holdings' },
+  { id: 'weightings', label: 'Weightings', icon: 'scale', key: '6' },
+  { id: 'unitvalue', label: 'Unit Value', icon: 'coins', key: '7' },
+  { id: 'holdings', label: 'Holdings', icon: 'briefcase', key: '8', manage: 'holdings' },
 ];
 const REFRESH_SECONDS = 120;
 let route = { view: 'dashboard', params: [] };
@@ -169,7 +170,7 @@ function toggleCollapse() {
 
 // Mobile: bottom bar for the four investor views + "More" opens the rail as a sheet.
 function renderTabbar() {
-  const items = NAV.filter(n => !n.manage).slice(0, 4);
+  const items = ['dashboard', 'performance', 'sectors', 'activity'].map(id => NAV.find(n => n.id === id));
   $('#tabbar').innerHTML = '<span class="tab-pill" id="tab-pill" aria-hidden="true"></span>' + items.map(n => `<button data-nav="${n.id}">${icon(n.icon)}<span>${esc(n.label)}</span></button>`).join('')
     + `<button id="tab-more">${icon('menu')}<span>More</span></button>`;
   $$('#tabbar [data-nav]').forEach(b => b.onclick = () => go(b.dataset.nav));

@@ -47,7 +47,7 @@ This reads and writes the live data.
 | `Lion/public/js/data.js` | **All data and maths**: loading from `/api`, sectors and benchmarks, positions, totals, realized gains, the time series behind every chart. Also the "never save what didn't load" guard. |
 | `Lion/public/js/chart.js` | The chart engine (plain SVG): line chart with crosshair, drag-to-measure, $/% mode, linear/log scale, y-range control, trade markers. Plus sparkline, donut, bar chart. |
 | `Lion/public/js/ui.js` | Shared UI: toasts, modals, popovers, lock screen, sortable tables, and `chartCard()`, the full chart panel with range/compare/axis/table controls. |
-| `Lion/public/js/views/*.js` | One file per page. Each registers itself in `VIEWS`. |
+| `Lion/public/js/views/*.js` | One file per page. Each registers itself in `VIEWS`. (`debrief.js` = Sector debrief.) |
 | `Lion/public/js/app.js` | Routing (`#/performance`, `#/stock/AAPL` …), the left navigation rail, theme, ⌘K search, boot and background refresh. |
 | `Lion/public/data/ledger.json` | The fund's full trade history 2012→, generated from the Master File. Don't hand-edit. |
 | `Lion/src/worker.js` | The Worker: routes `/api/*` to `src/routes/*.js`, runs the daily NAV snapshot (cron). |
@@ -63,12 +63,13 @@ This reads and writes the live data.
 | Performance | `#/performance` | Everyone: big chart with all controls, returns vs benchmarks, holdings grid |
 | Stock detail | `#/stock/TICKER` | Everyone: price chart with the fund's buy/sell markers, position stats, full trade history. Works for past holdings too |
 | Sectors | `#/sectors`, `#/sectors/Name` | Everyone: each sector vs its SPDR sector ETF and vs target weight |
+| Sector debrief | `#/debrief/<sector>/<ticker>` | Everyone. Built for the morning meeting: step through each stock in a sector (↑/↓) while the whole sector stays on screen, weighted by value (weight now vs. target vs. S&P, $ to rebalance, returns vs. the sector ETF, a composition bar sized by each stock's share). ←/→ change sector; "Present" goes full screen |
 | Activity | `#/activity` | Everyone: every trade since 2012, realized gains by year, past holdings, data-quality notes |
 | Holdings | `#/holdings` | Managers (password): Add transaction, edit positions, cash and units |
 | Weightings | `#/weightings` | Everyone can view sector targets vs actual vs S&P, with $ to rebalance. Editing needs the weightings password |
 | Unit Value | `#/unitvalue` | Everyone can view the official month-end unit value record (flags missing months and likely typos). Adding or correcting months needs the holdings password |
 
-Keyboard: `⌘K` or `/` search, `1`–`7` switch pages, `[` collapse the nav.
+Keyboard: `⌘K` or `/` search, `1`–`8` switch pages, `[` collapse the nav. On Sector debrief: `↑`/`↓` (or `K`/`J`) stocks, `←`/`→` sectors.
 
 Read-only mode is only the visible part of the protection: every write route in `Lion/src/routes/` checks the password token on the server, so nothing can be changed without the password even by calling the API directly.
 
