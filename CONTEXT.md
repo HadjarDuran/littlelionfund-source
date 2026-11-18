@@ -44,26 +44,35 @@ Whatever gets added has to be something a student, working part-time around
 a full course load, can understand, run, and fix a year from now — possibly
 a different student than the one reading this.
 
-## Current state (brief, as of this writing)
+## Current state (updated Nov 2026, after the dashboard overhaul)
 
-- Single-page app (vanilla HTML/JS) hosted on Vercel, with serverless
+- Static HTML/CSS/JS (no build step) on Vercel, split into small files under
+  `Lion/css` and `Lion/js` (see README.md for the map), with serverless
   functions for data and quotes.
-- Data lives in Upstash Redis (Vercel KV): current holdings, cash, sector
-  weightings, and monthly unit-value history (166 months, imported from the
-  fund's real historical spreadsheet). A daily cron job now snapshots NAV
-  going forward automatically.
-- Live prices come from Finnhub; historical price series come from Stooq,
-  falling back to Yahoo Finance.
-- Tabs today: **Dashboard** (top-line value, P&L, positions, allocation),
-  **Sectors** (sector-level performance + holdings), **Performance** (total
-  equity chart with timeframe selection, per-holding drill-down),
-  **Holdings**, **Weightings**, and **Unit Value** (the last three are
-  password-gated for editing by fund managers).
-- Recent work has mostly been correctness and trust fixes — charts were
-  showing distorted/unrealistic swings from data-handling bugs (staggered
-  price feeds, holdings projected backward before their purchase date).
-  That kind of bug is worth taking seriously here specifically *because*
-  real investors are looking at these numbers.
+- Data lives in Upstash Redis (Vercel KV): current holdings, cash, units,
+  sector weightings, monthly unit-value history since 2012, trades recorded in
+  the app, and a daily NAV snapshot from a cron job.
+- The fund's **full trade history since May 2012** (about 1,100 buys, sells,
+  splits and spinoffs) is imported from the Master File spreadsheet into
+  `Lion/data/ledger.json` by `Lion/scripts/import_ledger.py`. It powers the
+  Activity page, realized gains, past holdings and trade markers on charts.
+- Live prices come from Finnhub; daily price history from Stooq, falling back
+  to Yahoo Finance. Benchmarks (S&P 500, Nasdaq-100, Dow, Russell 2000, sector
+  SPDR ETFs) use the same history endpoint.
+- Pages: **Overview**, **Performance** (+ per-stock detail), **Sectors**,
+  **Activity** (read-only, everyone), then **Holdings**, **Weightings** and
+  **Unit Value** (password-gated manager tools). Navigation is a collapsible
+  panel on the left; on phones, a bottom tab bar plus a slide-in sheet.
+- Light and dark themes (follows the device by default), motion that respects
+  "reduce motion", ⌘K search.
+
+### Note on the "not a trading platform" principle
+
+In the Nov 2026 overhaul the fund chose to borrow *chart controls* from
+professional trading dashboards: benchmark overlays, $ vs % mode, linear/log
+scale, y-axis range control, drag-to-measure, trade markers. The rest of the
+principle below still stands: no order entry, no intraday or streaming data,
+no technical indicators or risk analytics.
 
 ## Design philosophy going forward
 

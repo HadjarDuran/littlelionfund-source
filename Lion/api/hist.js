@@ -2,8 +2,10 @@ export const config = { runtime: 'edge' };
 
 export default async function handler(req) {
   const { searchParams } = new URL(req.url);
-  const ticker = (searchParams.get('ticker') || '').toUpperCase().replace(/[^A-Z]/g, '');
+  // Letters plus . and - so class shares (BRK.B / BRK-B) work.
+  const ticker = (searchParams.get('ticker') || '').toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 10);
   if (!ticker) return new Response('Missing ticker', { status: 400 });
+  const sym = ticker.replace('.', '-'); // both Stooq and Yahoo spell class shares BRK-B
 
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -13,7 +15,7 @@ export default async function handler(req) {
 
   // Try Stooq first
   try {
-    const r = await fetch(`https://stooq.com/q/d/l/?s=${ticker}.US&i=d`, {
+    const r = await fetch(`https://stooq.com/q/d/l/?s=${sym}.US&i=d`, {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
     const text = await r.text();
@@ -37,7 +39,7 @@ export default async function handler(req) {
     const to = Math.floor(Date.now() / 1000);
     const from = to - 20 * 365 * 86400; // 20 years back — plenty for 5 Year / All Time
     const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${from}&period2=${to}&interval=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?period1=${from}&period2=${to}&interval=1d`,
       { headers: { 'User-Agent': 'Mozilla/5.0' } }
     );
     const json = await r.json();
