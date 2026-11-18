@@ -5,7 +5,9 @@
 // honest list of gaps found in the source spreadsheet.
 // ---------------------------------------------------------------------------
 
-const actState = { q: '', type: 'all', year: 'all', shown: 60 };
+// shown: how many feed rows are on screen. "auto" = as many as fit beside
+// the side cards (so the page has no empty gap), until "Show more" is used.
+const actState = { q: '', type: 'all', year: 'all', shown: 30, auto: true };
 const pastSort = { key: 'last', dir: 'desc' };
 
 VIEWS.activity = {
@@ -25,9 +27,9 @@ VIEWS.activity = {
       </div>
       <div class="card"><div class="card-h"><div><div class="card-t">${icon('chart-column')}Realized gains by year</div><div class="card-sub">Gain or loss locked in by sales each calendar year. Hover a bar for the short/long-term split</div></div></div>
         <div id="rz-bars" style="padding:8px 14px 10px"></div></div>
-      <div class="grid g-main" style="align-items:start">
+      <div class="grid g-main" style="align-items:start" id="act-grid">
         <div class="card" id="act-feed"></div>
-        <div class="stack">
+        <div class="stack sticky-col" id="act-side">
           <div class="card"><div class="card-h"><div class="card-t">${icon('trophy')}Best &amp; worst exits</div></div><div id="exits" style="padding-top:6px"></div></div>
           ${warnings.length ? `<div class="card"><div class="card-h"><div class="card-t">${icon('triangle-alert')}Gaps in the source ledger</div></div>
             <div class="card-b"><div class="note warn">${icon('info')}<span>The import flagged ${warnings.length} rows in the Master File that need a human look. Nothing was guessed silently. Fix them in the spreadsheet and re-run the import.</span></div>
@@ -49,7 +51,7 @@ VIEWS.activity = {
       <div class="li-end"><div class="strong tabular ${signCls(p.gain)}">${fmt.usdSigned(p.gain)}</div><div class="li-sub">${p.ret != null ? fmt.pct(p.ret, 0) : ''}</div></div></a>`;
     $('#exits').innerHTML = ranked.length ? `<div class="list">${ranked.slice(0, 4).map(exitLi).join('')}<div class="nav-label" style="padding:10px 20px 4px">Biggest losses</div>${ranked.slice(-3).reverse().map(exitLi).join('')}</div>` : '<div class="empty">No completed exits yet.</div>';
 
-    drawFeed(el, years);
+    fitFeed(el, years);
     drawPast();
   },
 };
@@ -85,11 +87,23 @@ function drawFeed(el, years) {
     <div class="list" id="act-list">${html || `<div class="empty">${icon('search')}<div>No matching activity.</div></div>`}</div>
     ${list.length > shown.length ? `<div style="padding:12px 20px 18px"><button class="btn ghost block" id="act-more">Show ${Math.min(100, list.length - shown.length)} more <span class="muted" style="font-weight:500">· ${fmt.int(list.length - shown.length)} left</span></button></div>` : ''}`;
   $$('#act-list > [data-i]', host).forEach(w => fillTxnText(w, [shown[+w.dataset.i]]));
-  $$('[data-type]', host).forEach(b => b.onclick = () => { actState.type = b.dataset.type; actState.shown = 60; drawFeed(el, years); });
-  $('#act-year').onchange = e => { actState.year = e.target.value; actState.shown = 60; drawFeed(el, years); };
+  $$('[data-type]', host).forEach(b => b.onclick = () => { actState.type = b.dataset.type; actState.auto = true; fitFeed(el, years); });
+  $('#act-year').onchange = e => { actState.year = e.target.value; actState.auto = true; fitFeed(el, years); };
   const qi = $('#act-q');
-  qi.oninput = debounce(() => { actState.q = qi.value; actState.shown = 60; drawFeed(el, years); const n = $('#act-q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 200);
-  const more = $('#act-more'); if (more) more.onclick = () => { actState.shown += 100; drawFeed(el, years); };
+  qi.oninput = debounce(() => { actState.q = qi.value; actState.auto = true; fitFeed(el, years); const n = $('#act-q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 200);
+  const more = $('#act-more'); if (more) more.onclick = () => { actState.auto = false; actState.shown += 100; drawFeed(el, years); };
+}
+
+// Shows as many feed rows as fit beside the side cards, so the two columns
+// end together. On a phone (one column) it just shows the first 20.
+function fitFeed(el, years) {
+  const grid = $('#act-grid'), side = $('#act-side'), feed = $('#act-feed');
+  const twoCol = grid && getComputedStyle(grid).gridTemplateColumns.split(' ').length > 1;
+  if (!actState.auto || !twoCol || !side) { if (actState.auto) actState.shown = 20; drawFeed(el, years); return; }
+  const target = side.offsetHeight;
+  actState.shown = 40;
+  drawFeed(el, years);
+  while (actState.shown > 6 && feed.offsetHeight > target + 8) { actState.shown -= 2; drawFeed(el, years); }
 }
 
 function drawPast() {

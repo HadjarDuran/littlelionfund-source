@@ -21,7 +21,7 @@ VIEWS.holdings = {
       </div>
       <div class="grid g-main g-main-sm" style="align-items:start">
         <div class="card" id="hold-table"></div>
-        <div class="stack">
+        <div class="stack sticky-col">
           <div class="card"><div class="card-h"><div class="card-t">${icon('landmark')}Cash &amp; units</div></div>
             <form class="card-b stack" id="cash-form" style="gap:12px">
               <div class="field"><label for="c-bank">Bank balance</label><input class="input" id="c-bank" type="number" step="0.01" value="${S.cashBank}"/></div>

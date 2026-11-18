@@ -13,8 +13,8 @@ VIEWS.dashboard = {
     const t = totals(), rz = realized(), fs = fundSeries();
     const fundItd = fs.length > 1 ? (fs[fs.length - 1].v / fs[0].v - 1) * 100 : null;
     el.innerHTML = `<div class="view">
-      <div class="grid g-main">
-        <div class="stack">
+      <div class="grid g-main balance" id="dash-grid">
+        <div class="stack" id="dash-left">
           <div class="card hero">
             <div class="hero-top">
               <div style="flex:1;min-width:240px">
@@ -38,14 +38,14 @@ VIEWS.dashboard = {
           <div class="card"><div class="card-h"><div class="card-t">${icon('trophy')}Returns vs. benchmarks</div><div class="spacer"></div><a class="chip" href="#/performance">Details ${icon('arrow-right', 'xs')}</a></div>
             <div id="dash-bench" style="padding-top:8px"></div></div>
         </div>
-        <div class="stack">
+        <div class="stack" id="dash-right">
           <div class="card"><div class="card-h"><div class="card-t">${icon('chart-pie')}Allocation</div><div class="spacer"></div><div id="alloc-seg"></div></div>
             <div class="card-b" id="alloc"></div></div>
           <div class="card"><div class="card-h"><div class="card-t">${icon('activity')}Today's movers</div></div><div id="movers" style="padding-top:6px"></div></div>
-          <div class="card"><div class="card-h"><div class="card-t">${icon('history')}Recent activity</div><div class="spacer"></div><a class="chip" href="#/activity">All ${icon('arrow-right', 'xs')}</a></div><div id="recent" style="padding-top:6px"></div></div>
         </div>
       </div>
-      <div class="card mt" id="pos-card"></div></div>`;
+      <div class="card mt" id="pos-card"></div>
+      <div class="card mt"><div class="card-h"><div class="card-t">${icon('history')}Recent activity</div><div class="spacer"></div><a class="chip" href="#/activity">All activity ${icon('arrow-right', 'xs')}</a></div><div id="recent" style="padding-top:6px"></div></div></div>`;
     const hv = $('#hero-v'); hv._v = this._lastTotal; countUp(hv, t.total, fmt.usd, 1100); this._lastTotal = t.total;
 
     const card = chartCard($('#dash-chart'), {
@@ -56,9 +56,13 @@ VIEWS.dashboard = {
     benchReturns($('#dash-bench'), { tickers: ['SPY', 'QQQ'], periods: BENCH_PERIODS.filter(p => p[0] !== '1M') });
     drawPositions();
     drawAlloc();
-    drawMovers();
-    drawRecent($('#recent'), allTxns().filter(x => !x.drip && (x.type === 'buy' || x.type === 'sell')).slice(0, 6));
-    return () => card.destroy();
+    drawRecent($('#recent'), allTxns().filter(x => !x.drip && (x.type === 'buy' || x.type === 'sell')).slice(0, 8), true);
+    balanceDash();
+    // Re-balance when the layout can shift: web font arriving, window resize.
+    document.fonts && document.fonts.ready.then(() => balanceDash());
+    const onResize = debounce(balanceDash, 150);
+    window.addEventListener('resize', onResize);
+    return () => { card.destroy(); window.removeEventListener('resize', onResize); };
   },
 };
 
@@ -136,15 +140,33 @@ function drawAlloc() {
   }).join('')}
     <div class="alloc-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px"><div class="alloc-name"><span class="sq" style="background:var(--border-strong)"></span><span>Cash (excluded from weights)</span></div><div class="alloc-pct tabular">${fmt.usd(t.cash, 0)}</div></div></div>
   ${allocView === 'sector' && Object.keys(targets).length ? `<div class="hint" style="margin-top:8px;display:flex;gap:6px;align-items:center"><span style="width:2px;height:12px;background:var(--text);opacity:.55;display:inline-block;border-radius:2px"></span>Tick = target weight</div>` : ''}`;
-  donut($('#donut'), slices, { size: 190, centerLabel: allocView === 'sector' ? `${bySector().length} sectors · invested` : `${positions().length} stocks · invested`, centerValue: fmt.usdCompact(t.equity) });
+  donut($('#donut'), slices, { size: 164, thickness: 22, centerLabel: allocView === 'sector' ? `${bySector().length} sectors · invested` : `${positions().length} stocks · invested`, centerValue: fmt.usdCompact(t.equity) });
 }
 
-function drawMovers() {
+// Overview's two columns end on the same line: the right column shows as
+// many movers as fit beside the left column (at least 1 up / 1 down), and the
+// last card in each column stretches to absorb what's left (less than a row).
+function balanceDash() {
+  const grid = $('#dash-grid'), L = $('#dash-left'), R = $('#dash-right');
+  if (!grid || !L || !R) return;
+  const twoCol = getComputedStyle(grid).gridTemplateColumns.split(' ').length > 1;
+  if (!twoCol) { drawMovers(3); return; }
+  grid.classList.add('measuring');
+  const natural = col => [...col.children].reduce((s, c) => s + c.offsetHeight, 0) + 16 * (col.children.length - 1);
+  const left = natural(L);
+  let k = 6;
+  for (; k > 1; k--) { drawMovers(k); if (natural(R) <= left + 12) break; }
+  if (k === 1) drawMovers(1);
+  grid.classList.remove('measuring');
+}
+
+function drawMovers(k = 3) {
   const host = $('#movers'); if (!host) return;
   const pos = positions().filter(p => p.hasPrice && p.pc);
   if (!pos.length) { host.innerHTML = '<div class="empty">Waiting for prices…</div>'; return; }
   const sorted = sortBy(pos, 'dayPct', 'desc');
-  const up = sorted.slice(0, 3), down = sorted.slice(-3).reverse().filter(p => !up.includes(p));
+  k = Math.max(1, Math.min(k, Math.floor(sorted.length / 2)));
+  const up = sorted.slice(0, k), down = sorted.slice(-k).reverse().filter(p => !up.includes(p));
   const li = p => `<a class="li click" href="#/stock/${encodeURIComponent(p.t)}" style="color:inherit">${tkLogo(p.t)}
     <div class="li-main"><div class="li-title">${esc(p.t)}</div><div class="li-sub">${fmt.usd(p.price)}</div></div>
     <div class="li-end"><div class="${signCls(p.dayPct)} strong tabular">${fmt.pct(p.dayPct)}</div><div class="li-sub ${signCls(p.dayChg)}">${fmt.usdSigned(p.dayChg)}</div></div></a>`;
@@ -173,9 +195,9 @@ function fillTxnText(host, list) {
     li.querySelector('.li-main .li-sub').textContent = [x.d ? dt.long(x.d) : 'Undated', qty, x.type !== 'buy' && x.type !== 'sell' && x.memo ? x.memo : null, x.est ? 'date estimated' : null, x.src === 'app' ? 'recorded in app' : null].filter(Boolean).join(' · ');
   });
 }
-function drawRecent(host, list) {
+function drawRecent(host, list, twoCol) {
   if (!host) return;
   if (!list.length) { host.innerHTML = '<div class="empty">No trades recorded yet.</div>'; return; }
-  host.innerHTML = `<div class="list">${list.map(txnLine).join('')}</div>`;
+  host.innerHTML = `<div class="list ${twoCol ? 'two-col' : ''}">${list.map(txnLine).join('')}</div>`;
   fillTxnText(host, list);
 }

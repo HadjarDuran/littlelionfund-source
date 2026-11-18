@@ -32,19 +32,17 @@ VIEWS.unitvalue = {
         <div class="card kpi"><div class="kpi-label">${icon('calendar-days')}Next entry due</div><div class="kpi-value" style="font-size:18px">${latest ? dt.long(nextMonthEnd(latest.iso)) : '—'}</div><div class="kpi-foot">${missing.length ? `<span class="badge warn">${icon('triangle-alert', 'xs')}${missing.length} month${missing.length > 1 ? 's' : ''} not recorded yet</span>` : 'Month-end, after the statement'}</div></div>
       </div>
       <div id="uv-chart"></div>
-      <div class="grid g-main" style="align-items:start">
+      ${edit ? `<div class="grid g-main">
         <div class="card" id="uv-table"></div>
-        ${edit ? `<div class="card"><div class="card-h"><div class="card-t" id="uv-form-t">${icon('plus')}Add month</div></div>
+        <div class="card"><div class="card-h"><div class="card-t" id="uv-form-t">${icon('plus')}Add month</div></div>
           <form class="card-b stack" id="uv-form" style="gap:12px">
             <div class="field"><label for="uv-d">Month-end date</label><input class="input" id="uv-d" type="date" value="${latest ? nextMonthEnd(latest.iso) : ''}"/></div>
             <div class="field"><label for="uv-u">Unit value ($)</label><input class="input" id="uv-u" type="number" step="0.0001" placeholder="e.g. ${live.toFixed(2)}"/>
               <div class="hint"><a href="#" id="uv-use-live">Use live estimate (${fmt.usd(live)})</a></div></div>
             <div class="field"><label for="uv-sp">S&amp;P 500 index level (optional)</label><input class="input" id="uv-sp" type="number" step="0.01" placeholder="e.g. 6800.00"/></div>
             <div class="row"><button class="btn primary" type="submit" style="flex:1">${icon('check', 'sm')}<span id="uv-btn-l">Add month</span></button><button class="btn ghost" type="button" id="uv-cancel" hidden>Cancel</button></div>
-          </form></div>` : `<div class="card"><div class="card-h"><div class="card-t">${icon('pencil')}Update the record</div></div>
-          <div class="card-b stack" style="gap:12px"><p class="hint" style="font-size:13px;line-height:1.55">Fund managers add each month-end unit value after the statement arrives, and can correct earlier months.</p>
-          ${editBtn('holdings', 'Add or correct a month')}</div></div>`}
-      </div></div>`;
+          </form></div>
+      </div>` : `<div class="card" id="uv-table"></div>`}</div>`;
 
     const card = chartCard($('#uv-chart'), {
       id: 'uv', title: 'Unit value history', titleIcon: 'chart-line', height: 340,
@@ -54,7 +52,7 @@ VIEWS.unitvalue = {
 
     function drawTable() {
       const list = [...rows].reverse();
-      $('#uv-table').innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('table')}Monthly record</div><div class="card-sub">${rows.length} months${edit ? ' · click a row to edit' : ''}</div></div>
+      $('#uv-table').innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('table')}Monthly record</div><div class="card-sub">${rows.length} months${edit ? ' · click a row to edit' : ''}</div>${edit ? '' : `<div class="spacer"></div>${editBtn('holdings', 'Add or correct a month')}`}</div>
         <div class="table-wrap" style="max-height:520px"><table class="t"><thead><tr><th class="left">Month-end</th><th>Unit value</th><th>Month change</th><th>Since start</th><th>S&amp;P 500</th>${edit ? '<th></th>' : ''}</tr></thead><tbody>
         ${list.map((r, k) => {
           const p = list[k + 1];
@@ -83,9 +81,12 @@ VIEWS.unitvalue = {
       $('#uv-btn-l').textContent = 'Update'; $('#uv-cancel').hidden = false;
       drawTable(); $('#uv-u').focus();
     }
-    const eb = el.querySelector('[data-edit]');
-    if (eb) eb.onclick = async () => { if (await unlockModal('unitvalue', 'Unit Value')) render(); };
-    if (!edit) { drawTable(); return () => card.destroy(); }
+    if (!edit) {
+      drawTable();
+      const eb = el.querySelector('[data-edit]');
+      if (eb) eb.onclick = async () => { if (await unlockModal('unitvalue', 'Unit Value')) render(); };
+      return () => card.destroy();
+    }
     $('#uv-cancel').onclick = () => { editIdx = null; render(); };
     $('#uv-use-live').onclick = e => { e.preventDefault(); $('#uv-u').value = live.toFixed(2); };
     $('#uv-form').onsubmit = async e => {

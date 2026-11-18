@@ -800,3 +800,26 @@ td.flash-up, td.flash-down { border-radius: 6px }
 .chart-legend .lg:nth-child(3) { animation-delay: 80ms }
 .chart-legend .lg:nth-child(n+4) { animation-delay: 120ms }
 .quiet .chart-legend .lg { animation: none }
+
+/* ---------- No gaps between side-by-side columns ---------- */
+/* Balanced grids: both columns share the row height and the last card in
+   each column stretches to fill it, so the columns end on the same line. */
+.g-main.balance > .stack > .card:last-child { flex: 1 1 auto }
+.g-main.balance.measuring > .stack > .card:last-child { flex: 0 0 auto }
+/* Side columns next to a long list stay in view while scrolling. */
+.sticky-col { position: sticky; top: 76px; align-self: start }
+@media (max-width: 1120px) { .sticky-col { position: static } }
+/* Two-column lists (Recent activity under Positions) */
+.list.two-col { display: grid; grid-template-columns: 1fr 1fr }
+.list.two-col > .li:nth-child(2) { border-top: 0 }
+.list.two-col > .li:nth-child(odd) { border-right: 1px solid var(--border) }
+@media (max-width: 800px) {
+  .list.two-col { grid-template-columns: 1fr }
+  .list.two-col > .li:nth-child(2) { border-top: 1px solid var(--border) }
+  .list.two-col > .li:nth-child(odd) { border-right: 0 }
+}
+/* Tighter allocation rows */
+.alloc-row { padding: 5px 0 }
+
+/* Badges inside narrow KPI tiles wrap instead of being cut off */
+.kpi-foot .badge { white-space: normal; height: auto; min-height: 22px; padding: 3px 8px; line-height: 1.3 }
