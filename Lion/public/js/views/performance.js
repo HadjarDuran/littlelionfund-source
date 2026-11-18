@@ -168,7 +168,7 @@ VIEWS.stock = {
     const ranges = [...RANGES, ...(firstBuy ? ['BUY'] : [])];
     const card = chartCard($('#stk-chart'), {
       id: p ? 'stock' : 'stock-past', title: `${t} price`, titleIcon: 'chart-line', height: 380, ranges,
-      defaults: { range: p ? '1Y' : 'BUY', mode: 'value', compare: ['SPY'] },
+      defaults: { range: p ? '1Y' : 'BUY', mode: 'value', compare: [] },
       build(ctx) {
         const s = priceSeries(t);
         if (!s) return { series: [], empty: S.histErr[TICKER_ALIASES[t] || t] ? `No price history available for ${esc(t)}` : 'Loading price history…' };

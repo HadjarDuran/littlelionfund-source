@@ -234,6 +234,7 @@ function afterRenderMotion(root) {
 //   build(ctx) → { series:[{key,name,color,points,primary}], markers, note, empty }
 //      ctx = { range, from, to, mode, source, compare:[tickers] }
 //   compareOptions: true               show the Compare picker
+//   extraCompare: [{t, name}]          page-specific compare lines (not tickers), listed first
 //   allowValue: true                   offer the $ mode
 //   onState(ctx)                       called after each render (to sync other UI)
 // }
@@ -242,7 +243,9 @@ const SERIES_COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(
 const MAX_COMPARE = 4;
 
 function chartCard(host, opts) {
-  const key = 'llf_chart_' + opts.id;
+  // v2: defaults changed (Nov 2026: comparisons off except on the fund charts), so
+  // earlier saved chart settings are left behind once.
+  const key = 'llf_chart_v2_' + opts.id;
   const saved = store.get(key, {});
   const st = {
     range: '1Y', mode: 'pct', scale: 'linear', yMode: 'auto', yMin: null, yMax: null, compare: [], source: null, table: false, custom: null,
@@ -250,6 +253,7 @@ function chartCard(host, opts) {
   };
   if (opts.allowValue === false) st.mode = 'pct';
   if (opts.sources && !opts.sources.some(s => s[0] === st.source)) st.source = opts.sources[0][0];
+  const isExtra = t => (opts.extraCompare || []).some(e => e.t === t);
   const save = () => store.set(key, { range: st.range, mode: st.mode, scale: st.scale, yMode: st.yMode, yMin: st.yMin, yMax: st.yMax, compare: st.compare, source: st.source, table: st.table });
 
   host.innerHTML = `<div class="card chart-card">
@@ -407,25 +411,25 @@ function chartCard(host, opts) {
   // compare picker: benchmarks, holdings, or any ticker
   const cmpBtn = $c('.cc-cmp');
   if (cmpBtn) cmpBtn.onclick = e => {
-    const row = (t, name, sub) => `<button class="pop-item ${st.compare.includes(t) ? 'on' : ''}" data-t="${esc(t)}"><span class="badge">${esc(t)}</span><span>${esc(name)}${sub ? ` <small>${esc(sub)}</small>` : ''}</span><span class="chk">${icon('check', 'sm')}</span></button>`;
+    const row = (t, name, sub) => `<button class="pop-item ${st.compare.includes(t) ? 'on' : ''}" data-t="${esc(t)}"><span class="badge">${isExtra(t) ? icon('target', 'xs') : esc(t)}</span><span>${esc(name)}${sub ? ` <small>${esc(sub)}</small>` : ''}</span><span class="chk">${icon('check', 'sm')}</span></button>`;
     const market = Object.entries(BENCHMARKS).filter(([, b]) => b.group === 'Market');
     const sector = Object.entries(BENCHMARKS).filter(([, b]) => b.group === 'Sector');
     openPop(e.currentTarget, `
       <div class="pop-sec"><div class="input-wrap">${icon('search', 'sm')}<input class="input sm" placeholder="Any ticker, e.g. VOO" data-q maxlength="10" style="text-transform:uppercase"/></div>
         <div class="hint">Up to ${MAX_COMPARE} at once. Benchmarks are price return (no dividends).</div></div>
       <div class="pop-sec" style="max-height:340px;overflow:auto;gap:2px">
-        <div class="pop-title">Market</div>${market.map(([t, b]) => row(t, b.name)).join('')}
+        ${opts.extraCompare ? `<div class="pop-title">This page</div>${opts.extraCompare.map(e => row(e.t, e.name)).join('')}<div class="pop-title" style="margin-top:8px">Market</div>` : '<div class="pop-title">Market</div>'}${market.map(([t, b]) => row(t, b.name)).join('')}
         <div class="pop-title" style="margin-top:8px">Sectors</div>${sector.map(([t, b]) => row(t, b.name)).join('')}
         ${S.hold.length ? `<div class="pop-title" style="margin-top:8px">Holdings</div>${S.hold.map(h => row(h.t, h.n || h.t)).join('')}` : ''}
       </div>`, pop => {
       const toggle = t => {
-        t = t.toUpperCase().replace(/[^A-Z.\-]/g, '');
+        if (!isExtra(t)) t = t.toUpperCase().replace(/[^A-Z.\-]/g, '');
         if (!t) return;
         if (st.compare.includes(t)) st.compare = st.compare.filter(x => x !== t);
         else {
           if (st.compare.length >= MAX_COMPARE) { toast(`Compare up to ${MAX_COMPARE} at a time`, 'info'); return; }
           st.compare = [...st.compare, t];
-          getHist(t).then(h => { if (!h) toast(`No price history found for ${t}`, 'err'); draw(false); });
+          if (!isExtra(t)) getHist(t).then(h => { if (!h) toast(`No price history found for ${t}`, 'err'); draw(false); });
         }
         $$('.pop-item', pop).forEach(b => b.classList.toggle('on', st.compare.includes(b.dataset.t)));
         save(); draw(false);
@@ -440,7 +444,7 @@ function chartCard(host, opts) {
   $c('.cc-tbl').onclick = () => { st.table = !st.table; save(); draw(false); };
 
   // Pull any compare histories we need, then redraw as they arrive.
-  st.compare.forEach(t => getHist(t).then(() => draw(false)));
+  st.compare.filter(t => !isExtra(t)).forEach(t => getHist(t).then(() => draw(false)));
   const onHist = debounce(() => { if (document.body.contains(host)) draw(false); }, 120);
   histListeners.add(onHist);
   draw();

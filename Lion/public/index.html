@@ -5,13 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Little Lion Fund</title>
   <meta name="description" content="Live dashboard for the Little Lion Fund, the student-run investment fund at State College Area High School." />
-  <meta name="theme-color" content="#f3f5f9" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0a0e16" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f3f5f9" />
   <link rel="icon" href="/sq-logo.png" />
   <link rel="apple-touch-icon" href="/sq-logo.png" />
   <!-- Theme is applied before first paint so dark-mode users never see a white flash. -->
   <script>
-    try { const t = localStorage.getItem('llf_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) { }
+    // Light unless this device chose dark (or "match device" on a dark-mode device).
+    (function () {
+      let c = 'light';
+      try { c = JSON.parse(localStorage.getItem('llf_theme_choice')) || 'light'; } catch (e) { }
+      const dark = c === 'dark' || (c === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

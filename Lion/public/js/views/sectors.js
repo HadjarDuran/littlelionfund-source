@@ -100,7 +100,8 @@ function renderSectorDetail(el, sector) {
   const benchKey = 'SECTOR_BENCH';
   const card = chartCard($('#sec-chart'), {
     id: 'sector', title: `${sector} vs. benchmark`, titleIcon: 'chart-line', height: 360,
-    defaults: { range: '1Y', mode: 'pct', compare: ['SPY'] },
+    defaults: { range: '1Y', mode: 'pct', compare: [] },
+    extraCompare: [{ t: benchKey, name: `This sector: ${sectorBenchName(sector)}` }],
     build(ctx) {
       const idx = ctx.mode === 'pct' ? holdingsReturnIndex(g.pos.filter(p => histOf(p.t))) : holdingsValueSeries(g.pos.filter(p => histOf(p.t)));
       if (idx.length < 2) return { series: [], empty: 'Loading price history…' };
@@ -110,10 +111,10 @@ function renderSectorDetail(el, sector) {
       return {
         series: [
           { key: 'sec', name: `LLF ${SECTORS[sector]?.short || sector}`, color: sectorColor(sector), points: sliceSeries(idx, from, ctx.to), primary: true },
-          ...(b ? [{ key: benchKey, name: sectorBenchName(sector), points: sliceSeries(b, from, ctx.to), dashed: true, color: 'var(--text-2)' }] : []),
-          ...compareSeries({ ...ctx, compare: ctx.compare.filter(t => !sectorBench(sector).includes(t)) }, from, ctx.to),
+          ...(b && ctx.compare.includes(benchKey) ? [{ key: benchKey, name: sectorBenchName(sector), points: sliceSeries(b, from, ctx.to), dashed: true, color: 'var(--text-2)', removable: true }] : []),
+          ...compareSeries({ ...ctx, compare: ctx.compare.filter(t => t !== benchKey && !sectorBench(sector).includes(t)) }, from, ctx.to),
         ],
-        note: ctx.mode === 'pct' ? 'Time-weighted return of this sector\'s current holdings. Dashed line = sector ETF benchmark (price return).' : 'Market value of this sector\'s current holdings from each purchase date.',
+        note: ctx.mode === 'pct' ? `Time-weighted return of this sector's current holdings. Compare → "This sector" adds ${sectorBenchName(sector)} (price return).` : 'Market value of this sector\'s current holdings from each purchase date.',
       };
     },
   });

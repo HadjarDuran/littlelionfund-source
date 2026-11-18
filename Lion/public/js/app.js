@@ -97,7 +97,7 @@ function renderCrumbs({ title, sub, back }) {
 // ---------------------------------------------------------------- the rail
 function renderRail() {
   const t = totals();
-  const theme = store.get('llf_theme_pref', 'system');
+  const theme = store.get('llf_theme_choice', 'light');
   const anyUnlocked = S.auth.holdings || S.auth.weightings;
   const item = n => `<button class="nav-item" data-nav="${n.id}" title="${esc(n.label)} (${n.key})">${icon(n.icon)}<span>${esc(n.label)}</span>
       ${n.manage ? `<span class="lock">${icon(isUnlocked(n.manage) ? 'lock-open' : 'lock')}</span>` : ''}</button>`;
@@ -123,8 +123,8 @@ function renderRail() {
     </div>`;
   $$('#rail [data-nav]').forEach(b => b.onclick = () => go(b.dataset.nav));
   $('#rail-collapse').onclick = toggleCollapse;
-  onSeg($('#rail'), 'theme', v => setTheme(v));
-  $('#theme-mini').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  onSeg($('#rail'), 'theme', v => setTheme(v, true));
+  $('#theme-mini').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
   const la = $('#lock-all'); if (la) la.onclick = () => { lockAll(); toast('Manager tools locked', 'info'); renderRail(); render(); };
   const fs = fundSeries();
   sparkline($('#snap-spark'), fs.slice(-13), 'var(--s1)', { height: 34 });
@@ -177,14 +177,16 @@ function openSheet() { $('#rail').classList.add('open'); $('#scrim').classList.a
 function closeSheet() { $('#rail').classList.remove('open'); $('#scrim').classList.remove('on'); }
 
 // ------------------------------------------------------------------- theme
-function setTheme(pref) {
-  store.set('llf_theme_pref', pref);
-  try { localStorage.setItem('llf_theme', pref); } catch (e) { }
+// Light is the default. Dark (or "match device") only applies once someone
+// picks it, and that choice is remembered on this device.
+function setTheme(pref, chosen = false) {
+  if (chosen) store.set('llf_theme_choice', pref);
   const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const eff = pref === 'system' ? (sysDark ? 'dark' : 'light') : pref;
+  const eff = pref === 'system' ? (sysDark ? 'dark' : 'light') : pref === 'dark' ? 'dark' : 'light';
   const apply = () => {
-    if (pref === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = pref;
+    document.documentElement.dataset.theme = eff;
     document.documentElement.dataset.eff = eff;
+    const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = eff === 'dark' ? '#0a0e16' : '#f3f5f9';
   };
   if (document.startViewTransition && !reducedMotion()) document.startViewTransition(apply); else apply();
   const mini = $('#theme-mini'); if (mini) mini.innerHTML = icon(eff === 'dark' ? 'sun' : 'moon');
@@ -226,7 +228,7 @@ function openPalette() {
     ...S.hold.map(h => ({ sec: 'Holdings', label: h.t, sub: h.n || '', logo: h.t, run: () => go('stock/' + h.t), q: h.t + ' ' + (h.n || '') })),
     ...past.map(p => ({ sec: 'Past holdings', label: p.t, sub: `Sold ${dt.monYr(p.last)} · ${fmt.usdSigned(p.gain)}`, logo: p.t, run: () => go('stock/' + p.t), q: p.t })),
     { sec: 'Actions', label: 'Add a transaction', ic: 'plus', run: () => { go('holdings'); setTimeout(() => window.openAddTxn && openAddTxn(), 200); }, q: 'add buy sell transaction trade' },
-    { sec: 'Actions', label: 'Toggle dark mode', ic: 'moon', run: () => setTheme(document.documentElement.dataset.eff === 'dark' || document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'), q: 'theme dark light mode' },
+    { sec: 'Actions', label: 'Toggle dark mode', ic: 'moon', run: () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true), q: 'theme dark light mode' },
     { sec: 'Actions', label: 'Refresh prices', ic: 'refresh-cw', run: () => refresh(true), q: 'refresh reload prices' },
   ];
   let sel = 0, shown = [];
@@ -311,7 +313,7 @@ function showApp() {
 
 (async function boot() {
   if (store.get('llf_rail_collapsed')) $('#shell').classList.add('collapsed');
-  setTheme(store.get('llf_theme_pref', 'system'));
+  setTheme(store.get('llf_theme_choice', 'light'));
 
   const hadSnapshot = loadSnapshot();
   if (hadSnapshot) {
@@ -349,5 +351,5 @@ window.addEventListener('hashchange', navigate);
 window.addEventListener('online', () => { S.offline = false; renderAsOf(); refresh(); });
 window.addEventListener('offline', () => { S.offline = true; renderAsOf(); });
 window.addEventListener('scroll', () => $('#topbar')?.classList.toggle('scrolled', window.scrollY > 4), { passive: true });
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (store.get('llf_theme_pref', 'system') === 'system') setTheme('system'); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (store.get('llf_theme_choice', 'light') === 'system') setTheme('system'); });
 window.addEventListener('resize', debounce(() => setActiveNav(false), 100));
