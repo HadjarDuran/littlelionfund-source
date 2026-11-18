@@ -23,15 +23,15 @@ VIEWS.dashboard = {
                 <div class="hero-chg">${t.priced ? chgPill(t.day, `${fmt.usd(Math.abs(t.day))} (${fmt.pct(t.dayPct)})`) + '<span class="muted" style="font-weight:500">today</span>' : '<span class="muted">Waiting for prices…</span>'}</div>
               </div>
               <div class="row wrap" style="gap:28px;padding-top:6px">
-                <div><div class="kpi-label">${icon('coins', 'sm')}Unit value</div><div class="kpi-value tabular" style="font-size:20px">${fmt.usd(t.unit)}</div><div class="kpi-foot">${fmt.shares(S.units)} units</div></div>
-                ${fundItd != null ? `<div><div class="kpi-label">${icon('trending-up', 'sm')}Since ${fs[0].d.slice(0, 4)}</div><div class="kpi-value tabular ${signCls(fundItd)}" style="font-size:20px">${fmt.pct(fundItd, 1)}</div><div class="kpi-foot">${fmt.pct(annualize(fundItd, fs[0].d, fs[fs.length - 1].d), 1)} / yr</div></div>` : ''}
+                <div><div class="kpi-label">${icon('coins', 'sm')}Unit value</div><div class="kpi-value tabular" style="font-size:20px">${cu(t.unit)}</div><div class="kpi-foot">${fmt.shares(S.units)} units</div></div>
+                ${fundItd != null ? `<div><div class="kpi-label">${icon('trending-up', 'sm')}Since ${fs[0].d.slice(0, 4)}</div><div class="kpi-value tabular ${signCls(fundItd)}" style="font-size:20px">${cu(fundItd, 'pct', 1)}</div><div class="kpi-foot">${fmt.pct(annualize(fundItd, fs[0].d, fs[fs.length - 1].d), 1)} / yr</div></div>` : ''}
               </div>
             </div>
             <div class="grid g-4 stagger" style="margin:20px 0 16px">
-              ${kpi('briefcase', 'Invested', fmt.usd(t.equity), `${t.count} positions`)}
-              ${kpi('landmark', 'Cash', fmt.usd(t.cash), `${t.total ? (t.cash / t.total * 100).toFixed(1) : 0}% of fund`)}
-              ${kpi('trending-up', 'Unrealized gain', `<span class="${signCls(t.pnl)}">${fmt.usdSigned(t.pnl)}</span>`, `${fmt.pct(t.pnlPct)} on ${fmt.usdCompact(t.cost)} cost`)}
-              ${kpi('receipt', `Realized ${dt.today().slice(0, 4)}`, `<span class="${signCls(rz.ytd)}">${fmt.usdSigned(rz.ytd)}</span>`, `${fmt.usdCompact(rz.all)} since 2012`)}
+              ${kpi('briefcase', 'Invested', cu(t.equity), `${t.count} positions`)}
+              ${kpi('landmark', 'Cash', cu(t.cash), `${t.total ? (t.cash / t.total * 100).toFixed(1) : 0}% of fund`)}
+              ${kpi('trending-up', 'Unrealized gain', `<span class="${signCls(t.pnl)}">${cu(t.pnl, 'usdSigned')}</span>`, `${fmt.pct(t.pnlPct)} on ${fmt.usdCompact(t.cost)} cost`)}
+              ${kpi('receipt', `Realized ${dt.today().slice(0, 4)}`, `<span class="${signCls(rz.ytd)}">${cu(rz.ytd, 'usdSigned')}</span>`, `${fmt.usdCompact(rz.all)} since 2012`)}
             </div>
           </div>
           <div id="dash-chart"></div>
@@ -66,6 +66,8 @@ function kpi(ic, label, value, foot) {
   return `<div class="kpi" style="padding:0"><div class="kpi-label">${icon(ic)}${label}</div><div class="kpi-value tabular">${value}</div><div class="kpi-foot">${foot}</div></div>`;
 }
 
+// Last price shown per ticker, so a background refresh can flash what changed.
+const _pxSeen = {};
 function drawPositions() {
   const host = $('#pos-card'); if (!host) return;
   const pos = positions(), t = totals();
@@ -73,10 +75,14 @@ function drawPositions() {
     ['Holding', 't', 'left'], ['Shares', 'sh'], ['Avg cost', 'ac'], ['Price', 'price'], ['Today', 'dayPct'],
     ['Value', 'val'], ['Gain / loss', 'pnl'], ['Weight', 'weight'], ['Annual %', 'annual'], ['1-yr price', 'ttm'],
   ];
+  const flashCls = p => {
+    const prev = _pxSeen[p.t]; _pxSeen[p.t] = p.price;
+    return window.__quiet && prev && p.price && prev !== p.price ? (p.price > prev ? 'flash-up' : 'flash-down') : '';
+  };
   const row = p => `<tr class="click" data-t="${esc(p.t)}">
       <td class="left"><div class="tk">${tkLogo(p.t)}<div style="min-width:0"><div class="tk-name">${esc(p.t)}</div><div class="tk-sub">${esc(p.n || '')}</div></div></div></td>
       <td class="muted">${fmt.shares(p.sh)}</td><td class="muted">${fmt.usd(p.ac)}</td>
-      <td class="strong">${p.hasPrice ? fmt.usd(p.price) : '—'}</td>
+      <td class="strong ${flashCls(p)}">${p.hasPrice ? fmt.usd(p.price) : '—'}</td>
       <td class="${signCls(p.dayPct)}">${p.hasPrice ? fmt.pct(p.dayPct) : '—'}</td>
       <td class="strong">${p.hasPrice ? fmt.usd(p.val) : '—'}</td>
       <td class="${signCls(p.pnl)}">${p.hasPrice ? `${fmt.usdSigned(p.pnl)}<div style="font-size:11.5px;opacity:.85">${fmt.pct(p.pnlPct)}</div>` : '—'}</td>

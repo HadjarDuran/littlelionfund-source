@@ -149,14 +149,77 @@ function wireSort(root, sort, rerender) {
 
 // ---- segmented control ----
 const seg = (name, opts, cur, cls = '') =>
-  `<div class="seg ${cls}" role="group" data-seg="${name}">${opts.map(o => {
+  `<div class="seg ${cls}" role="group" data-seg="${name}"><span class="seg-thumb" aria-hidden="true"></span>${opts.map(o => {
     const [v, label, title] = Array.isArray(o) ? o : [o, o];
     return `<button type="button" data-v="${esc(v)}" class="${String(cur) === String(v) ? 'on' : ''}" ${title ? `title="${esc(title)}"` : ''} aria-pressed="${String(cur) === String(v)}">${label}</button>`;
   }).join('')}</div>`;
 function onSeg(root, name, fn) {
+  $$(`[data-seg="${name}"]`, root).forEach(s => placeThumb(s));
   $$(`[data-seg="${name}"] button`, root).forEach(b => b.onclick = () => {
+    const segEl = b.closest('.seg');
     $$(`[data-seg="${name}"] button`, root).forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+    // Run the change first. If it re-draws this control, the new one glides
+    // from the remembered position; if not, slide this one.
     fn(b.dataset.v, b);
+    if (document.body.contains(segEl)) placeThumb(segEl);
+  });
+}
+
+// ---- motion helpers ------------------------------------------------------
+// Segmented controls get a pill ("thumb") that slides to the selected option.
+// Its last position is remembered per control, so when a re-render replaces
+// the control, the new thumb glides from where the old one was.
+const _thumbMem = {};
+function placeThumb(segEl) {
+  if (!segEl) return;
+  const thumb = segEl.querySelector('.seg-thumb'), on = segEl.querySelector('button.on');
+  if (!thumb || !on || !on.offsetWidth) return; // not laid out yet: the plain .on style still shows
+  const key = (segEl.parentElement?.closest('[id]')?.id || '') + ':' + segEl.dataset.seg;
+  const to = { x: on.offsetLeft, w: on.offsetWidth };
+  const from = _thumbMem[key];
+  segEl.classList.add('has-thumb');
+  if (from && (from.x !== to.x || from.w !== to.w) && !thumb._placed && !reducedMotion() && !window.__quiet) {
+    thumb.style.transition = 'none';
+    thumb.style.width = from.w + 'px'; thumb.style.transform = `translateX(${from.x}px)`;
+    void thumb.offsetWidth;
+    thumb.style.transition = '';
+  } else if (!thumb._placed) thumb.style.transition = 'none';
+  requestAnimationFrame(() => {
+    thumb.style.width = to.w + 'px'; thumb.style.transform = `translateX(${to.x}px)`;
+    if (thumb.style.transition === 'none') requestAnimationFrame(() => (thumb.style.transition = ''));
+  });
+  thumb._placed = true;
+  _thumbMem[key] = to;
+}
+window.addEventListener('resize', debounce(() => $$('.seg.has-thumb').forEach(s => { s.querySelector('.seg-thumb')._placed = false; placeThumb(s); }), 120));
+
+// A number that counts up when its page opens: cu(1234.5, 'usd').
+const cu = (v, f = 'usd', d) => `<span class="cu tabular" data-v="${v}" data-f="${f}"${d != null ? ` data-d="${d}"` : ''}>${d != null ? fmt[f](v, d) : fmt[f](v)}</span>`;
+
+// Runs after every non-background render: count-ups, and reveal-on-scroll
+// for cards below the fold (with their charts and bars re-drawn as they
+// appear, so the draw-in animation isn't spent while off-screen).
+let _revealObs = null;
+function afterRenderMotion(root) {
+  if (reducedMotion()) return;
+  $$('.cu', root).forEach(n => {
+    const v = +n.dataset.v, f = fmt[n.dataset.f], d = n.dataset.d != null ? +n.dataset.d : undefined;
+    if (!isFinite(v) || !f) return;
+    n._v = n.dataset.f === 'usd' || n.dataset.f === 'int' ? v * 0.82 : 0;
+    countUp(n, v, x => (d != null ? f(x, d) : f(x)), 1000);
+  });
+  if (_revealObs) _revealObs.disconnect();
+  _revealObs = new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const c = e.target;
+    c.classList.add('rv-in');
+    $$('.chart-line.draw, .chart-area, .mini-bar > i, .alloc-track > i, .stagger > *', c).forEach(x => { x.style.animation = 'none'; void x.offsetWidth; x.style.animation = ''; });
+    _revealObs.unobserve(c);
+  }), { threshold: 0.06, rootMargin: '0px 0px -40px 0px' });
+  const fold = window.innerHeight;
+  $$('.view .card', root).forEach(c => {
+    if (c.closest('.stagger') || c.closest('.rv')) return;
+    if (c.getBoundingClientRect().top > fold - 20) { c.classList.add('rv'); _revealObs.observe(c); }
   });
 }
 
@@ -243,10 +306,15 @@ function chartCard(host, opts) {
     $c('.cc-tbl').classList.toggle('on', st.table);
 
     // legend with each series' return over the visible window
+    // A compared line whose data source stopped updating ends early; say so
+    // instead of letting it silently stop short of the main line.
+    const mainEnd = (series.find(s => s.primary) || series[0])?.points?.slice(-1)[0]?.d;
     $c('.cc-legend').innerHTML = series.filter(s => s.points && s.points.length > 1).map((s, i) => {
       const r = (s.points[s.points.length - 1].v / s.points[0].v - 1) * 100;
+      const end = s.points[s.points.length - 1].d;
+      const short = !s.primary && mainEnd && dt.days(end, mainEnd) > 5;
       return `<span class="lg" data-k="${esc(s.key)}"><span class="key ${s.dashed ? 'dash' : ''}" style="background:${s.color};color:${s.color}"></span><span class="nm"></span>
-        <span class="v ${signCls(r)}">${fmt.pct(r)}</span>${s.removable ? `<button aria-label="Remove">${icon('x', 'xs')}</button>` : ''}</span>`;
+        <span class="v ${signCls(r)}">${fmt.pct(r)}</span>${short ? `<span class="badge warn" title="The price source hasn't sent anything newer. The return shown is up to this date.">thru ${dt.short(end)}</span>` : ''}${s.removable ? `<button aria-label="Remove">${icon('x', 'xs')}</button>` : ''}</span>`;
     }).join('') + (out.legendExtra || '');
     $$('.cc-legend .lg', host).forEach(l => {
       const s = series.find(x => x.key === l.dataset.k);

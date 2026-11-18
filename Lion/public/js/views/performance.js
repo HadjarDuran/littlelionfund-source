@@ -52,7 +52,10 @@ function benchReturns(el, { tickers = ['SPY', 'QQQ', 'DIA'], periods = BENCH_PER
   const win = p => p === null ? start : p === 'ytd' ? near(dt.addDays(end.slice(0, 4) + '-01-01', -1)) : near(dt.addMonths(end, -p));
   const froms = periods.map(([, p]) => win(p));
   const row = (name, series, primary, tk) => {
+    // A benchmark whose prices stopped updating can't be measured "to today".
+    const staleEnd = !primary && series && dt.days(series[series.length - 1].d, end) > 5 ? series[series.length - 1].d : null;
     const cells = periods.map(([lbl, p], k) => {
+      if (staleEnd) return '<td class="muted">—</td>';
       const f = froms[k];
       if (!series && S.histErr[tk]) return '<td class="muted">—</td>';
       if (!series) return `<td><span class="skel" style="display:inline-block;width:44px;height:12px"></span></td>`;
@@ -63,7 +66,7 @@ function benchReturns(el, { tickers = ['SPY', 'QQQ', 'DIA'], periods = BENCH_PER
       if (yrs > 1.05) r = annualize(r, f, end);
       return `<td class="${signCls(r)} ${primary ? 'strong' : ''}">${fmt.pct(r, 1)}</td>`;
     }).join('');
-    return `<tr><td class="left"><span class="row" style="gap:8px">${primary ? `<span class="sq" style="background:var(--s1)"></span>` : '<span class="sq" style="background:var(--border-strong)"></span>'}<span class="${primary ? 'strong' : ''}">${esc(name)}</span></span></td>${cells}</tr>`;
+    return `<tr><td class="left"><span class="row" style="gap:8px">${primary ? `<span class="sq" style="background:var(--s1)"></span>` : '<span class="sq" style="background:var(--border-strong)"></span>'}<span class="${primary ? 'strong' : ''}">${esc(name)}</span>${staleEnd ? ` <span class="badge warn" title="The price source hasn't sent anything newer, so returns to today can't be measured yet">prices thru ${dt.short(staleEnd)}</span>` : ''}</span></td>${cells}</tr>`;
   };
   el.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th class="left">As of ${fs[fs.length - 1].live ? 'today (live)' : dt.long(end)}</th>${periods.map(([l, p]) => `<th title="${p === null ? 'Since inception (' + dt.monYr(start) + ')' : ''}">${l}</th>`).join('')}</tr></thead>
     <tbody>${row('Little Lion Fund', fs, true)}${tickers.map(t => row(benchName(t), priceSeries(t), false, t)).join('')}</tbody></table></div>
@@ -139,7 +142,7 @@ VIEWS.stock = {
           ${tkLogo(t, 52)}
           <div style="min-width:0;flex:1">
             <div class="hero-label">${p ? esc(p.n || t) : sold[0] ? `Sold ${dt.long(sold[0].d)}` : ''} ${sector ? `<span class="badge"><span class="dot" style="background:${sectorColor(sector)};width:7px;height:7px"></span>${esc(sector)}</span>` : '<span class="badge">No longer held</span>'}</div>
-            <div class="hero-value tabular" id="stk-px">${lastPx ? fmt.usd(lastPx) : '—'}</div>
+            <div class="hero-value tabular" id="stk-px">${lastPx ? cu(lastPx) : '—'}</div>
             <div class="hero-chg">${p && p.hasPrice ? chgPill(p.dayPct, `${fmt.usdSigned(p.price - p.pc).replace('+', '')} (${fmt.pct(p.dayPct)})`) + '<span class="muted" style="font-weight:500">today</span>' : ser ? `<span class="muted" style="font-weight:500">Last close ${dt.long(ser[ser.length - 1].d)}</span>` : ''}</div>
           </div>
         </div>

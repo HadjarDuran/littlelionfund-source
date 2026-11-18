@@ -24,9 +24,9 @@ VIEWS.unitvalue = {
 
     el.innerHTML = `<div class="view stack">
       <div class="grid g-4 stagger">
-        <div class="card kpi"><div class="kpi-label">${icon('coins')}Latest recorded</div><div class="kpi-value tabular">${latest ? fmt.usd(latest.u) : '—'}</div><div class="kpi-foot">${latest ? dt.long(latest.iso) : ''}${mChg != null ? ` · <span class="${signCls(mChg)}">${fmt.pct(mChg)}</span> vs. prior` : ''}</div></div>
-        <div class="card kpi"><div class="kpi-label">${icon('activity')}Live estimate</div><div class="kpi-value tabular">${fmt.usd(live)}</div><div class="kpi-foot">Fund value ÷ ${fmt.shares(S.units)} units, right now</div></div>
-        <div class="card kpi"><div class="kpi-label">${icon('trending-up')}Since ${first ? dt.monYr(first.iso) : '—'}${liveOk ? ' (live)' : ''}</div><div class="kpi-value tabular ${signCls(itd)}">${itd != null ? fmt.pct(itd, 1) : '—'}</div><div class="kpi-foot">${itd != null ? fmt.pct(annualize(itd, first.iso, liveOk ? dt.today() : latest.iso), 1) + ' per year, compounded' : ''}</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('coins')}Latest recorded</div><div class="kpi-value tabular">${latest ? cu(latest.u) : '—'}</div><div class="kpi-foot">${latest ? dt.long(latest.iso) : ''}${mChg != null ? ` · <span class="${signCls(mChg)}">${fmt.pct(mChg)}</span> vs. prior` : ''}</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('activity')}Live estimate</div><div class="kpi-value tabular">${cu(live)}</div><div class="kpi-foot">Fund value ÷ ${fmt.shares(S.units)} units, right now</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('trending-up')}Since ${first ? dt.monYr(first.iso) : '—'}${liveOk ? ' (live)' : ''}</div><div class="kpi-value tabular ${signCls(itd)}">${itd != null ? cu(itd, 'pct', 1) : '—'}</div><div class="kpi-foot">${itd != null ? fmt.pct(annualize(itd, first.iso, liveOk ? dt.today() : latest.iso), 1) + ' per year, compounded' : ''}</div></div>
         <div class="card kpi"><div class="kpi-label">${icon('calendar-days')}Next entry due</div><div class="kpi-value" style="font-size:18px">${latest ? dt.long(nextMonthEnd(latest.iso)) : '—'}</div><div class="kpi-foot">${missing.length ? `<span class="badge warn">${icon('triangle-alert', 'xs')}${missing.length} month${missing.length > 1 ? 's' : ''} not recorded yet</span>` : 'Month-end, after the statement'}</div></div>
       </div>
       <div id="uv-chart"></div>

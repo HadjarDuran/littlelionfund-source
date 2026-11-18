@@ -16,6 +16,8 @@
  *
  * Every /api/* route is mocked in memory (writes last until you stop the
  * server). Password for every lock: "dev".
+ * STALE=SPY node Lion/scripts/dev-server.cjs  simulates a ticker whose price
+ * history stopped updating (to test the "thru <date>" warnings).
  * (`npm run dev` / `wrangler dev` runs the real Worker instead, but needs
  * the database secrets in Lion/.dev.vars.)
  */
@@ -131,7 +133,11 @@ http.createServer(async (req, res) => {
     const route = p.slice(5);
     await new Promise(r => setTimeout(r, +process.env.API_DELAY || 60));
     const tk = (u.searchParams.get('ticker') || '').toUpperCase();
-    if (route === 'hist') return send(res, 200, simHist(tk));
+    // STALE=SPY,QQQ simulates a price source that stopped updating mid-October.
+    if (route === 'hist') {
+      const stale = (process.env.STALE || '').toUpperCase().split(',').includes(tk);
+      return send(res, 200, stale ? simHist(tk).filter(x => x.date <= '2026-10-15') : simHist(tk));
+    }
     if (route === 'quote') {
       const h = simHist(tk), c = h[h.length - 1].close, pc = h[h.length - 2].close;
       return send(res, 200, { c, pc, h: +(Math.max(c, pc) * 1.006).toFixed(2), l: +(Math.min(c, pc) * 0.994).toFixed(2), d: +(c - pc).toFixed(2) });

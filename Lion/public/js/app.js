@@ -27,6 +27,8 @@ function parseHash() {
 }
 function go(path) {
   const h = '#/' + path;
+  // Slide the sidebar highlight right away, before the page itself changes.
+  setActiveNav(true, navId(path.split('/')[0] || 'dashboard'));
   if (location.hash === h) render(); else location.hash = h;
 }
 function navId(v) { return v === 'stock' ? 'performance' : v; }
@@ -49,19 +51,41 @@ function render({ quiet = false } = {}) {
   };
   run();
   setActiveNav();
+  if (!quiet) afterRenderMotion(el);
 }
 function navigate() {
   const next = parseHash();
   const changed = next.view !== route.view || next.params.join('/') !== route.params.join('/');
+  const prev = route;
   route = next;
   closeSheet();
   if (!changed && $('#content').childElementCount) return render();
-  const swap = () => { render(); window.scrollTo({ top: 0, behavior: 'instant' }); };
-  if (document.startViewTransition && !reducedMotion()) document.startViewTransition(swap);
-  else swap();
+  // Only the content area animates: it fades out briefly, then the new page
+  // rises in from the direction of travel (down the menu → from below). The
+  // sidebar is never snapshotted, so its highlight slides live the whole time.
+  setActiveNav(true);
+  const el = $('#content');
+  const order = v => NAV.findIndex(n => n.id === navId(v));
+  const dir = next.view === 'stock' || (next.view === 'sectors' && next.params.length) ? 'in'
+    : prev.view === 'stock' || (prev.view === 'sectors' && prev.params.length) ? 'out'
+    : order(next.view) >= order(prev.view) ? 'down' : 'up';
+  const token = (navigate._t = (navigate._t || 0) + 1);
+  const swap = () => {
+    if (token !== navigate._t) return; // a newer click already won
+    el.classList.remove('leaving');
+    el.dataset.dir = dir;
+    render();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  if (reducedMotion() || !el.childElementCount) return swap();
+  el.classList.add('leaving');
+  setTimeout(swap, 120);
 }
 
 function renderCrumbs({ title, sub, back }) {
+  // Only animate the title when it actually changes (not on background refreshes).
+  $('#crumbs').classList.toggle('still', renderCrumbs._last === title);
+  renderCrumbs._last = title;
   $('#crumbs').innerHTML = `${back ? `<button class="back" aria-label="Back">${icon('arrow-left')}</button>` : ''}
     <h1></h1>${sub ? '<span class="crumb-sub"></span>' : ''}`;
   $('#crumbs h1').textContent = title;
@@ -107,8 +131,7 @@ function renderRail() {
   renderTabbar();
   setActiveNav(false);
 }
-function setActiveNav(animate = true) {
-  const id = navId(route.view);
+function setActiveNav(animate = true, id = navId(route.view)) {
   $$('[data-nav]').forEach(b => { b.classList.toggle('active', b.dataset.nav === id); b.setAttribute('aria-current', b.dataset.nav === id ? 'page' : 'false'); });
   const ind = $('#nav-ind'), act = $(`#nav-main [data-nav="${id}"]`);
   if (ind && act) {
@@ -117,19 +140,35 @@ function setActiveNav(animate = true) {
     ind.style.opacity = 1;
     if (!animate) requestAnimationFrame(() => (ind.style.transition = ''));
   }
+  // mobile tab bar pill
+  const pill = $('#tab-pill'), tab = $(`#tabbar [data-nav="${id}"]`);
+  if (pill) {
+    if (!tab) { pill.style.opacity = 0; return; }
+    if (!animate) pill.style.transition = 'none';
+    pill.style.opacity = 1;
+    pill.style.width = tab.offsetWidth + 'px';
+    pill.style.transform = `translateX(${tab.offsetLeft}px)`;
+    if (!animate) requestAnimationFrame(() => (pill.style.transition = ''));
+  }
 }
 function toggleCollapse() {
   const sh = $('#shell');
-  sh.classList.toggle('collapsed');
-  store.set('llf_rail_collapsed', sh.classList.contains('collapsed'));
-  renderRail();
-  setTimeout(() => setActiveNav(false), 450); // re-measure once the width transition settles
+  const collapsing = !sh.classList.contains('collapsed');
+  const apply = () => {
+    sh.classList.toggle('collapsed', collapsing);
+    sh.classList.remove('rail-fading');
+    store.set('llf_rail_collapsed', collapsing);
+    renderRail();
+    if (!collapsing && !reducedMotion()) { sh.classList.add('rail-appearing'); setTimeout(() => sh.classList.remove('rail-appearing'), 700); }
+    setTimeout(() => setActiveNav(false), 450); // re-measure once the width transition settles
+  };
+  if (collapsing && !reducedMotion()) { sh.classList.add('rail-fading'); setTimeout(apply, 140); } else apply();
 }
 
 // Mobile: bottom bar for the four investor views + "More" opens the rail as a sheet.
 function renderTabbar() {
   const items = NAV.filter(n => !n.manage).slice(0, 4);
-  $('#tabbar').innerHTML = items.map(n => `<button data-nav="${n.id}">${icon(n.icon)}<span>${esc(n.label)}</span></button>`).join('')
+  $('#tabbar').innerHTML = '<span class="tab-pill" id="tab-pill" aria-hidden="true"></span>' + items.map(n => `<button data-nav="${n.id}">${icon(n.icon)}<span>${esc(n.label)}</span></button>`).join('')
     + `<button id="tab-more">${icon('menu')}<span>More</span></button>`;
   $$('#tabbar [data-nav]').forEach(b => b.onclick = () => go(b.dataset.nav));
   $('#tab-more').onclick = openSheet;

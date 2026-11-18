@@ -39,7 +39,8 @@ VIEWS.sectors = {
         const since = idx.length && from && idx[0].d > from ? idx[0].d : null;
         const r = periodReturn(idx, since || from, end);
         const b = sectorBenchSeries(g.s);
-        const br = b && end ? periodReturn(b, since || from, end) : null;
+        const bStale = b && end && dt.days(b[b.length - 1].d, end) > 5;
+        const br = b && end && !bStale ? periodReturn(b, since || from, end) : null;
         const tw = targets[g.s];
         return { ...g, r, br, since, loading: !idx.length, diff: r != null && br != null ? r - br : null, target: tw ? +tw.p : null, sp: tw ? +tw.sp : null };
       });
@@ -82,9 +83,9 @@ function renderSectorDetail(el, sector) {
   const tw = (S.weightings || []).find(w => w.s === sector);
   el.innerHTML = `<div class="view stack">
     <div class="grid g-4 stagger">
-      <div class="card kpi"><div class="kpi-label">${icon('wallet')}Market value</div><div class="kpi-value tabular">${fmt.usd(g.val)}</div><div class="kpi-foot">${g.weight.toFixed(1)}% of invested${tw ? ` · target ${tw.p}%` : ''}</div></div>
-      <div class="card kpi"><div class="kpi-label">${icon('trending-up')}Unrealized gain</div><div class="kpi-value tabular ${signCls(g.pnl)}">${fmt.usdSigned(g.pnl)}</div><div class="kpi-foot">${fmt.pct(g.pnlPct)} on ${fmt.usd(g.cost, 0)} cost</div></div>
-      <div class="card kpi"><div class="kpi-label">${icon('calendar')}Today</div><div class="kpi-value tabular ${signCls(g.day)}">${fmt.usdSigned(g.day)}</div><div class="kpi-foot">${g.n} holdings</div></div>
+      <div class="card kpi"><div class="kpi-label">${icon('wallet')}Market value</div><div class="kpi-value tabular">${cu(g.val)}</div><div class="kpi-foot">${g.weight.toFixed(1)}% of invested${tw ? ` · target ${tw.p}%` : ''}</div></div>
+      <div class="card kpi"><div class="kpi-label">${icon('trending-up')}Unrealized gain</div><div class="kpi-value tabular ${signCls(g.pnl)}">${cu(g.pnl, 'usdSigned')}</div><div class="kpi-foot">${fmt.pct(g.pnlPct)} on ${fmt.usd(g.cost, 0)} cost</div></div>
+      <div class="card kpi"><div class="kpi-label">${icon('calendar')}Today</div><div class="kpi-value tabular ${signCls(g.day)}">${cu(g.day, 'usdSigned')}</div><div class="kpi-foot">${g.n} holdings</div></div>
       <div class="card kpi"><div class="kpi-label">${icon('target')}Benchmark</div><div class="kpi-value" style="font-size:18px">${esc(sectorBench(sector).join(' + '))}</div><div class="kpi-foot">${esc(sectorBenchName(sector))}</div></div>
     </div>
     <div id="sec-chart"></div>

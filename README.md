@@ -136,6 +136,12 @@ was also recorded in the app, delete the app copy from the Holdings page.
   (gain ÷ weighted invested capital ÷ years), so its "annualized" figure is
   much higher than the compounded one here. Neither is wrong; they answer
   different questions.
+- **Price histories** come from Stooq, then Yahoo, and the last good copy
+  is kept in Redis. A download is only accepted if it reaches the last few
+  days (a source once served an S&P file that stopped in mid-October). If
+  every source is behind, charts say "thru <date>" on that line and the
+  returns table shows "prices thru <date>" instead of a wrong number. To
+  preview that state: `STALE=SPY node Lion/scripts/dev-server.cjs`.
 - **"Dividend reinvestment"** in Activity is a heuristic: a buy under $100
   into a position that's already open. The ledger records DRIP purchases as
   ordinary buys.

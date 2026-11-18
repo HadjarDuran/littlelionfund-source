@@ -1,10 +1,11 @@
 import { kv } from '../lib/kv.js';
 import { json } from '../lib/http.js';
 import { cleanTicker } from '../lib/transactions.js';
+import { isStale, freshest } from '../lib/histFresh.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Cache-Control': 's-maxage=3600', // cache 1 hour at the edge
+  'Cache-Control': 'public, max-age=900', // browsers may reuse for 15 min
 };
 
 // Each holding's full daily history used to be fetched live from Stooq/Yahoo
@@ -16,6 +17,7 @@ const CORS = {
 // stale, and still served if a refresh fails — a chart only goes empty if a
 // ticker has never once loaded successfully.
 const FRESH_MS = 6 * 60 * 60 * 1000;
+const STALE_RETRY_MS = 30 * 60 * 1000;
 // Stooq in particular can stall without ever answering; without a cutoff the
 // request (and the chart waiting on it) hangs until Cloudflare kills it.
 const UPSTREAM_TIMEOUT_MS = 8000;
@@ -65,20 +67,27 @@ async function fetchYahoo(ticker) {
   return null;
 }
 
+// Tries both sources and keeps whichever reaches the most recent day. A
+// source can answer with a complete-looking but out-of-date file (this left
+// the S&P 500 line stuck in mid-October 2026 while other tickers were
+// current), so "got 20+ rows" isn't good enough on its own.
 async function fetchUpstream(ticker) {
-  try {
-    const s = await fetchStooq(ticker);
-    if (s) return s;
-  } catch (e) {}
-  return fetchYahoo(ticker);
+  let stooq = null;
+  try { stooq = await fetchStooq(ticker); } catch (e) {}
+  if (stooq && !isStale(stooq)) return stooq;
+  let yahoo = null;
+  try { yahoo = await fetchYahoo(ticker); } catch (e) {}
+  return freshest([stooq, yahoo]);
 }
 
-async function refresh(client, key, ticker) {
+async function refresh(client, key, ticker, saved) {
   const data = await fetchUpstream(ticker);
-  if (data) {
-    try { await client.set(key, { at: Date.now(), data }); } catch (e) { console.error('hist save failed', ticker, e); }
+  // Never replace a saved copy with an older one.
+  const best = freshest([data, saved && saved.data]);
+  if (best) {
+    try { await client.set(key, { at: Date.now(), data: best }); } catch (e) { console.error('hist save failed', ticker, e); }
   }
-  return data;
+  return best;
 }
 
 export async function handleHist(request, env, ctx) {
@@ -93,17 +102,20 @@ export async function handleHist(request, env, ctx) {
   try { saved = await client.get(key); } catch (e) {}
   const hasSaved = saved && Array.isArray(saved.data) && saved.data.length > 0;
 
+  let data = null;
   if (hasSaved) {
-    if (Date.now() - (saved.at || 0) > FRESH_MS) {
-      const bg = refresh(client, key, ticker).catch(() => {});
+    data = saved.data;
+    const age = Date.now() - (saved.at || 0);
+    // Refresh when the copy is old, or sooner (every 30 min) when its
+    // newest close is already days behind.
+    if (age > FRESH_MS || (isStale(data) && age > STALE_RETRY_MS)) {
+      const bg = refresh(client, key, ticker, saved).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(bg); else await bg;
     }
-    return json(saved.data, 200, CORS);
+  } else {
+    try { data = await refresh(client, key, ticker, null); } catch (e) {}
   }
+  if (!data) return json({ error: 'Failed to fetch history' }, 502, { ...CORS, 'Cache-Control': 'no-store' });
 
-  try {
-    const data = await refresh(client, key, ticker);
-    if (data) return json(data, 200, CORS);
-  } catch (e) {}
-  return json({ error: 'Failed to fetch history' }, 502, { ...CORS, 'Cache-Control': 'no-store' });
+  return json(data, 200, CORS);
 }

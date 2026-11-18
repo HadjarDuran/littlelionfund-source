@@ -18,10 +18,10 @@ VIEWS.activity = {
 
     el.innerHTML = `<div class="view stack">
       <div class="grid g-4 stagger">
-        <div class="card kpi"><div class="kpi-label">${icon('receipt')}Realized gains, all time</div><div class="kpi-value tabular ${signCls(rz.all)}">${fmt.usdSigned(rz.all)}</div><div class="kpi-foot">${fmt.usdSigned(rz.lt)} long-term · ${fmt.usdSigned(rz.st)} short-term</div></div>
-        <div class="card kpi"><div class="kpi-label">${icon('calendar')}Realized in ${dt.today().slice(0, 4)}</div><div class="kpi-value tabular ${signCls(rz.ytd)}">${fmt.usdSigned(rz.ytd)}</div><div class="kpi-foot">${all.filter(x => x.type === 'sell' && x.d?.startsWith(dt.today().slice(0, 4))).length} sales this year</div></div>
-        <div class="card kpi"><div class="kpi-label">${icon('list')}Trades recorded</div><div class="kpi-value tabular">${fmt.int(trades.length)}</div><div class="kpi-foot">${fmt.int(trades.filter(x => x.drip).length)} of them dividend reinvestments</div></div>
-        <div class="card kpi"><div class="kpi-label">${icon('history')}Past holdings</div><div class="kpi-value tabular">${past.length}</div><div class="kpi-foot">companies owned and fully sold</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('receipt')}Realized gains, all time</div><div class="kpi-value tabular ${signCls(rz.all)}">${cu(rz.all, 'usdSigned')}</div><div class="kpi-foot">${fmt.usdSigned(rz.lt)} long-term · ${fmt.usdSigned(rz.st)} short-term</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('calendar')}Realized in ${dt.today().slice(0, 4)}</div><div class="kpi-value tabular ${signCls(rz.ytd)}">${cu(rz.ytd, 'usdSigned')}</div><div class="kpi-foot">${all.filter(x => x.type === 'sell' && x.d?.startsWith(dt.today().slice(0, 4))).length} sales this year</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('list')}Trades recorded</div><div class="kpi-value tabular">${cu(trades.length, 'int')}</div><div class="kpi-foot">${fmt.int(trades.filter(x => x.drip).length)} of them dividend reinvestments</div></div>
+        <div class="card kpi"><div class="kpi-label">${icon('history')}Past holdings</div><div class="kpi-value tabular">${cu(past.length, 'int')}</div><div class="kpi-foot">companies owned and fully sold</div></div>
       </div>
       <div class="card"><div class="card-h"><div><div class="card-t">${icon('chart-column')}Realized gains by year</div><div class="card-sub">Gain or loss locked in by sales each calendar year. Hover a bar for the short/long-term split</div></div></div>
         <div id="rz-bars" style="padding:8px 14px 10px"></div></div>
