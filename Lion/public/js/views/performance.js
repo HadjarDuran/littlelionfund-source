@@ -11,6 +11,10 @@ const PORTFOLIO_SOURCES = [
 RANGE_LABEL.BUY = 'Since first buy';
 
 function portfolioBuild(ctx) {
+  if (isIntraRange(ctx.range)) {
+    if (ctx.source === 'fund') return { series: [], empty: 'The unit value is recorded once a month, so it has no 1D or 1W view. Switch to Holdings above.' };
+    return intradayBuild(positions(), ctx, 'LLF holdings');
+  }
   if (ctx.source === 'fund') {
     const base = fundSeries();
     if (base.length < 2) return { series: [], empty: 'No unit value history recorded yet' };
@@ -88,7 +92,7 @@ VIEWS.performance = {
     const card = chartCard($('#perf-chart'), {
       id: 'perf', title: 'Fund performance', titleIcon: 'chart-line', height: 420,
       sources: PORTFOLIO_SOURCES, defaults: { range: '1Y', mode: 'pct', compare: ['SPY'], source: 'holdings' },
-      build: portfolioBuild,
+      build: portfolioBuild, intraday: true,
     });
     benchReturns($('#perf-bench'), { tickers: ['SPY', 'QQQ', 'DIA', 'IWM'] });
     const sortState = store.get('llf_perf_sort', 'weight');
@@ -169,7 +173,12 @@ VIEWS.stock = {
     const card = chartCard($('#stk-chart'), {
       id: p ? 'stock' : 'stock-past', title: `${t} price`, titleIcon: 'chart-line', height: 380, ranges,
       defaults: { range: p ? '1Y' : 'BUY', mode: 'value', compare: [] },
+      intraday: true,
       build(ctx) {
+        if (isIntraRange(ctx.range)) {
+          const r = intradayBuild([{ t, sh: 1 }], ctx, t);
+          return { ...r, fmt: v => '$' + (v >= 1000 ? fmt.int(v) : v.toFixed(2)) };
+        }
         const s = priceSeries(t);
         if (!s) return { series: [], empty: S.histErr[TICKER_ALIASES[t] || t] ? `No price history available for ${esc(t)}` : 'Loading price history…' };
         const end = ctx.to || s[s.length - 1].d;

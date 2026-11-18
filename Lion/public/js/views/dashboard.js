@@ -51,7 +51,7 @@ VIEWS.dashboard = {
     const card = chartCard($('#dash-chart'), {
       id: 'dash', title: 'Performance', titleIcon: 'chart-line', height: 300,
       sources: PORTFOLIO_SOURCES, defaults: { range: '1Y', mode: 'pct', compare: ['SPY'], source: 'holdings' },
-      build: portfolioBuild,
+      build: portfolioBuild, intraday: true,
     });
     benchReturns($('#dash-bench'), { tickers: ['SPY', 'QQQ'], periods: BENCH_PERIODS.filter(p => p[0] !== '1M') });
     drawPositions();

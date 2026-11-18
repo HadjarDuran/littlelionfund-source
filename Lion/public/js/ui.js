@@ -334,7 +334,8 @@ function chartCard(host, opts) {
     last = { ...out, ctx: c };
     const series = (out.series || []).map((s, i) => ({ ...s, color: s.color || SERIES_COLORS[i % SERIES_COLORS.length] }));
     // controls
-    $c('.cc-ranges').innerHTML = seg('range', (opts.ranges || RANGES).map(r => [r, r === 'MAX' ? 'Max' : r, RANGE_LABEL[r]]), st.range);
+    const rangeList = [...(opts.intraday ? ['1D', '1W'] : []), ...(opts.ranges || RANGES)];
+    $c('.cc-ranges').innerHTML = seg('range', rangeList.map(r => [r, r === 'MAX' ? 'Max' : r, RANGE_LABEL[r]]), st.range);
     onSeg(host, 'range', v => { st.range = v; st.custom = null; save(); draw(); });
     $c('.cc-custom').classList.toggle('on', st.range === 'CUSTOM');
     $c('.cc-custom span').textContent = st.range === 'CUSTOM' && st.custom ? `${dt.monYr(st.custom[0])} – ${dt.monYr(st.custom[1])}` : 'Custom';
@@ -369,6 +370,7 @@ function chartCard(host, opts) {
     const cfg = {
       series, mode: st.mode, scale: st.scale, yMode: st.yMode, yMin: st.yMin, yMax: st.yMax,
       markers: out.markers, height: opts.height || 340, emptyText: out.empty || 'Loading price history…',
+      xIndex: !!out.xIndex, refLine: out.refLine || null,
       fmt: out.fmt, ariaLabel: opts.title,
     };
     if (!chart) chart = lineChart($c('.cc-chart'), cfg);
@@ -385,7 +387,7 @@ function chartCard(host, opts) {
     const primary = valid.find(s => s.primary) || valid[0];
     let rows = primary.points;
     // Long daily ranges → one row per month (last trading day) to stay readable.
-    if (rows.length > 260) { const m = {}; rows.forEach(p => { m[p.d.slice(0, 7)] = p; }); rows = Object.values(m); }
+    if (rows.length > 260 && !isTs(rows[0].d)) { const m = {}; rows.forEach(p => { m[p.d.slice(0, 7)] = p; }); rows = Object.values(m); }
     const base = valid.map(s => s.points[0].v);
     const cell = (s, k, d) => {
       const i = bisectDate(s.points, d); if (i < 0) return '<td class="muted">—</td>';
@@ -490,6 +492,34 @@ function chartCard(host, opts) {
     redraw: (animate = false) => draw(animate),
     state: st,
     destroy() { histListeners.delete(onHist); chart && chart.destroy(); },
+  };
+}
+
+// Compare lines for the 1D / 1W views (intraday bars).
+function compareIntraday(ctx) {
+  ensureIntraday(ctx.compare, ctx.range);
+  return ctx.compare.map((t, k) => ({ key: t, name: benchName(t), points: intradaySeries(t, ctx.range), removable: true, color: compareColor(t, k) }));
+}
+
+// The 1D / 1W chart for any set of holdings (whole fund, a sector, or one
+// stock with sh = 1 for its price).
+function intradayBuild(list, ctx, name, color, extra = []) {
+  const tickers = list.map(p => p.t);
+  ensureIntraday(tickers, ctx.range);
+  const st = intradayStatus(tickers, ctx.range);
+  const agg = holdingsIntraday(list, ctx.range);
+  const word = ctx.range === '1D' ? "today's" : "this week's";
+  if (!agg.points.length) {
+    return { series: [], empty: st.done < st.total ? `Loading ${word} prices… ${st.done ? `(${st.done} of ${st.total})` : ''}` : `${ctx.range === '1D' ? "Today's" : "This week's"} prices aren't available right now. Try again in a few minutes, or pick a longer range.` };
+  }
+  const last = agg.points[agg.points.length - 1].d;
+  const closed = ctx.range === '1D' && dt.etKey(last) !== dt.etKey(new Date().toISOString()) ? ` Market closed: showing ${dt.etDay(last)}.` : '';
+  const partial = st.done === st.total && st.ok < st.total ? ` ${st.total - st.ok} of ${st.total} had no short-term prices and are left out.` : '';
+  return {
+    series: [{ key: 'intra', name, color, points: agg.points, primary: true }, ...extra, ...compareIntraday(ctx)],
+    xIndex: true,
+    refLine: ctx.range === '1D' && agg.prevClose ? { v: agg.prevClose, label: 'Previous close' } : null,
+    note: `${ctx.range === '1D' ? '5-minute' : '15-minute'} prices from Yahoo Finance, regular trading hours, New York time. Short-term prices are cached for at most a day.${closed}${partial}`,
   };
 }
 

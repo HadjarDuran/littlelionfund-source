@@ -102,7 +102,17 @@ function renderSectorDetail(el, sector) {
     id: 'sector', title: `${sector} vs. benchmark`, titleIcon: 'chart-line', height: 360,
     defaults: { range: '1Y', mode: 'pct', compare: [] },
     extraCompare: [{ t: benchKey, name: `This sector: ${sectorBenchName(sector)}` }],
+    intraday: true,
     build(ctx) {
+      if (isIntraRange(ctx.range)) {
+        const etf = sectorBench(sector)[0];
+        const extra = [];
+        if (ctx.compare.includes(benchKey)) {
+          ensureIntraday([etf], ctx.range);
+          extra.push({ key: benchKey, name: benchName(etf), points: intradaySeries(etf, ctx.range), dashed: true, color: 'var(--text-2)', removable: true });
+        }
+        return intradayBuild(g.pos, { ...ctx, compare: ctx.compare.filter(t => t !== benchKey) }, `LLF ${SECTORS[sector]?.short || sector}`, sectorColor(sector), extra);
+      }
       const idx = ctx.mode === 'pct' ? holdingsReturnIndex(g.pos.filter(p => histOf(p.t))) : holdingsValueSeries(g.pos.filter(p => histOf(p.t)));
       if (idx.length < 2) return { series: [], empty: 'Loading price history…' };
       const end = ctx.to || idx[idx.length - 1].d;

@@ -48,6 +48,25 @@ jobs:
           curl -s -w "\nHTTP %{http_code}\n" "$CF_URL/api/quote?ticker=AAPL"
           curl -s -w "\nHTTP %{http_code}\n" "$CF_URL/api/hist?ticker=AAPL"
 
+      - name: Price history freshness + short-term (1D/1W) prices (Cloudflare)
+        run: |
+          # Cloudflare finishes deploying a minute or two after this workflow
+          # starts, so give the newest route a few tries before checking.
+          for i in 1 2 3 4 5 6 7 8; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$CF_URL/api/intraday?ticker=SPY&range=1d")
+            if [ "$code" = "200" ]; then break; fi
+            echo "attempt $i: /api/intraday HTTP $code, waiting for the deploy"; sleep 30
+          done
+          summarize='import json,sys
+          d = json.load(sys.stdin)
+          if isinstance(d, list):
+              print("  daily history:", len(d), "days, first", d[0]["date"] if d else None, "last", d[-1]["date"] if d else None)
+          else:
+              p = d.get("points") or []
+              print("  bars:", len(p), "| first", p[0]["t"] if p else None, "| last", p[-1] if p else None, "| prevClose", d.get("prevClose"), "| stale", d.get("stale", False), "| error", d.get("error"))'
+          for t in SPY QQQ AAPL; do echo "/api/hist $t"; curl -s "$CF_URL/api/hist?ticker=$t" | python3 -c "$summarize" || true; done
+          for q in "SPY&range=1d" "AAPL&range=1d" "AAPL&range=5d"; do echo "/api/intraday $q"; curl -s "$CF_URL/api/intraday?ticker=$q" | python3 -c "$summarize" || true; done
+
       - name: Auth endpoint sanity check (wrong password, both platforms)
         run: |
           set -x

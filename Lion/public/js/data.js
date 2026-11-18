@@ -482,3 +482,75 @@ function annualize(pct, from, to) {
   if (pct == null || yrs < 1) return pct;
   return (Math.pow(1 + pct / 100, 1 / yrs) - 1) * 100;
 }
+
+
+// ---- intraday (1D / 1W views) ----------------------------------------------
+// Short-term bars from /api/intraday, loaded only when someone picks 1D or
+// 1W. Kept in memory for a couple of minutes; never saved in the browser.
+const INTRA_RANGE = { '1D': '1d', '1W': '5d' };
+const INTRA_TTL = { '1d': 2 * 60e3, '5d': 10 * 60e3 };
+const isIntraRange = r => r === '1D' || r === '1W';
+RANGE_LABEL['1D'] = '1 day (5-minute prices)';
+RANGE_LABEL['1W'] = '1 week (15-minute prices)';
+const _intra = {};
+const _intraQueue = [];
+let _intraActive = 0;
+function _intraPump() {
+  while (_intraActive < 6 && _intraQueue.length) {
+    const job = _intraQueue.shift(); _intraActive++;
+    job().finally(() => { _intraActive--; _intraPump(); });
+  }
+}
+const _intraKey = (t, range) => (INTRA_RANGE[range] || range) + ':' + (TICKER_ALIASES[t] || t);
+function getIntraday(t, range) {
+  const r = INTRA_RANGE[range] || range, sym = TICKER_ALIASES[t] || t, key = r + ':' + sym;
+  const c = _intra[key];
+  if (c && (c.p || Date.now() - c.at < INTRA_TTL[r])) return c.p || Promise.resolve(c.data);
+  const entry = _intra[key] = { at: 0, data: c ? c.data : null, p: null, err: false };
+  entry.p = new Promise(resolve => {
+    _intraQueue.push(() => fetchJSON(`/api/intraday?ticker=${encodeURIComponent(sym)}&range=${r}`, { timeout: 12000, cache: 'default' })
+      .then(d => { if (d && Array.isArray(d.points) && d.points.length > 1) entry.data = d; })
+      .catch(() => { })
+      .finally(() => { entry.err = !entry.data; entry.at = Date.now(); entry.p = null; invalidate(true); resolve(entry.data); }));
+    _intraPump();
+  });
+  return entry.p;
+}
+const intradayOf = (t, range) => (_intra[_intraKey(t, range)] || {}).data || null;
+function ensureIntraday(tickers, range) { tickers.forEach(t => getIntraday(t, range)); }
+function intradayStatus(tickers, range) {
+  let done = 0, ok = 0;
+  tickers.forEach(t => { const c = _intra[_intraKey(t, range)]; if (c && !c.p) { done++; if (c.data) ok++; } else if (c && c.data) { done++; ok++; } });
+  return { done, ok, total: tickers.length };
+}
+// One ticker's bars as a chart series. On 1D the previous close is added as a
+// first point just before the open, so % change reads "vs. yesterday's close"
+// like the day change everywhere else in the app.
+function intradaySeries(t, range) {
+  const d = intradayOf(t, range);
+  if (!d) return [];
+  const pts = d.points.map(p => ({ d: p.t, v: p.c }));
+  if (range === '1D' && d.prevClose > 0) pts.unshift({ d: new Date(Date.parse(pts[0].d) - 5 * 60e3).toISOString().replace('.000Z', 'Z'), v: d.prevClose, prev: true });
+  return pts;
+}
+// Combined value of several holdings (shares × price) on the union of their
+// bar times. A holding missing a bar keeps its last price.
+function holdingsIntraday(list, range) {
+  const key = 'hi:' + range + ':' + list.map(p => p.t + p.sh).join(',');
+  return memo(key, () => {
+    const parts = list.map(p => ({ p, s: intradaySeries(p.t, range) })).filter(x => x.s.length);
+    if (!parts.length) return { points: [], n: 0 };
+    const times = [...new Set(parts.flatMap(x => x.s.map(q => q.d)))].sort();
+    const idx = parts.map(() => 0);
+    const points = times.map(d => {
+      let v = 0;
+      parts.forEach((x, k) => {
+        while (idx[k] < x.s.length - 1 && x.s[idx[k] + 1].d <= d) idx[k]++;
+        v += x.s[idx[k]].v * x.p.sh; // before its first bar, a holding counts at its first price
+      });
+      return { d, v: +v.toFixed(2) };
+    });
+    const prevOk = parts.every(x => x.s[0].prev);
+    return { points, n: parts.length, prevClose: prevOk ? points[0].v : null };
+  });
+}

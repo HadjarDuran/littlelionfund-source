@@ -10,6 +10,8 @@
 //   yMode:   'auto' | 'zero' | 'manual', yMin, yMax  (manual bounds in $ or %)
 //   height, fmt (formats a $ value), markers:[{d, type:'buy'|'sell', text}],
 //   measure: true (drag to measure, desktop), animate: true, area: true
+//   xIndex: true    space points evenly (intraday: nights/weekends squeezed out)
+//   refLine: { v, label }   dashed reference line in $ (e.g. previous close)
 // }
 //
 // One y-axis only. When comparing series in 'value' mode, every non-primary
@@ -20,7 +22,7 @@
 // ---------------------------------------------------------------------------
 
 const SVGNS = 'http://www.w3.org/2000/svg';
-const ms = d => Date.parse(d + 'T00:00:00Z');
+const ms = d => (d.length > 10 ? Date.parse(d) : Date.parse(d + 'T00:00:00Z'));
 
 function niceStep(range, target) {
   const raw = range / Math.max(target, 1);
@@ -79,6 +81,24 @@ function timeTicks(t0, t1, width) {
   return out;
 }
 
+// x-axis labels for intraday (index-mode) charts: one per market day when
+// the window spans several days ("Mon 17"), otherwise one per hour ("10 AM").
+function intradayTicks(TS, xp, width) {
+  const keys = TS.map(t => dt.etKey(new Date(t).toISOString()));
+  const multi = keys[0] !== keys[keys.length - 1];
+  const out = [];
+  if (multi) {
+    TS.forEach((t, i) => { if (i === 0 || keys[i] !== keys[i - 1]) out.push({ t, label: (() => { const parts = ET.wd.formatToParts(new Date(t)); const g = k => (parts.find(x => x.type === k) || {}).value || ''; return `${g('weekday')} ${g('day')}`; })(), strong: true }); });
+  } else {
+    let last = null;
+    TS.forEach(t => { const h = ET.hour.format(new Date(t)); if (h !== last) { if (last !== null) out.push({ t, label: h }); last = h; } });
+  }
+  // keep labels at least ~70px apart
+  const kept = []; let lx = -1e9;
+  out.forEach(o => { const x = xp(o.t); if (x - lx >= 70) { kept.push(o); lx = x; } });
+  return kept;
+}
+
 function lineChart(el, cfg) {
   el.classList.add('chart-box');
   const st = { cfg, w: 0, drawn: false, sel: null };
@@ -119,6 +139,9 @@ function lineChart(el, cfg) {
     const inv = y => log ? (pct ? (Math.exp(y) - 1) * 100 : Math.exp(y)) : y;
     let lo = Infinity, hi = -Infinity;
     series.forEach(s => s.pts.forEach(p => { const y = fwd(p.disp); if (y < lo) lo = y; if (y > hi) hi = y; }));
+    const prim0 = series.find(s => s.primary) || series[0];
+    const refDisp = c.refLine && c.refLine.v > 0 ? (pct ? (c.refLine.v / prim0.points[0].v - 1) * 100 : c.refLine.v) : null;
+    if (refDisp != null && c.yMode !== 'manual') { const y = fwd(refDisp); if (isFinite(y)) { lo = Math.min(lo, y); hi = Math.max(hi, y); } }
     if (c.yMode === 'zero' && !log) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
     if (c.yMode === 'manual') {
       if (c.yMin != null && isFinite(c.yMin) && (!log || (pct ? c.yMin > -100 : c.yMin > 0))) lo = fwd(c.yMin);
@@ -136,9 +159,32 @@ function lineChart(el, cfg) {
     let t0 = Infinity, t1 = -Infinity;
     series.forEach(s => { t0 = Math.min(t0, s.pts[0].t); t1 = Math.max(t1, s.pts[s.pts.length - 1].t); });
     if (t1 === t0) t1 = t0 + 864e5;
-    const xp = t => PL + (t - t0) / (t1 - t0) * CW;
+    let xp = t => PL + (t - t0) / (t1 - t0) * CW;
+    let xInv = x => t0 + Math.max(0, Math.min(1, (x - PL) / CW)) * (t1 - t0);
+    // Index mode: the primary series' points are evenly spaced, so the hours
+    // the market is closed take no room. Other series map onto the same scale.
+    const TS = c.xIndex ? prim0.pts.map(p => p.t) : null;
+    if (TS && TS.length > 1) {
+      const n = TS.length;
+      t0 = TS[0]; t1 = TS[n - 1];
+      xp = t => {
+        if (t <= TS[0]) return PL;
+        if (t >= TS[n - 1]) return PL + CW;
+        let a = 0, b = n - 1;
+        while (b - a > 1) { const m = (a + b) >> 1; if (TS[m] <= t) a = m; else b = m; }
+        const f = (t - TS[a]) / ((TS[b] - TS[a]) || 1);
+        return PL + (a + Math.min(1, f)) / (n - 1) * CW;
+      };
+      xInv = x => {
+        const f = Math.max(0, Math.min(1, (x - PL) / CW)) * (n - 1);
+        const a = Math.floor(f), b = Math.min(n - 1, a + 1);
+        return TS[a] + (f - a) * (TS[b] - TS[a]);
+      };
+      // drop compared points that fall outside the primary's window
+      series.forEach(s => { if (!s.primary) s.pts = s.pts.filter(p => p.t >= t0 && p.t <= t1); });
+    }
     const yp = y => PT + (1 - (y - lo) / (hi - lo)) * CH;
-    st.geom = { PL, PR, PT, PB, CW, CH, W, H, t0, t1, xp, yp, fwd, inv, lo, hi, series, primary: series.find(s => s.primary) || series[0], pct, fmtV };
+    st.geom = { PL, PR, PT, PB, CW, CH, W, H, t0, t1, xp, xInv, yp, fwd, inv, lo, hi, series, primary: series.find(s => s.primary) || series[0], pct, fmtV };
 
     // y ticks
     const yticks = [];
@@ -165,12 +211,17 @@ function lineChart(el, cfg) {
       const lastP = series.find(s => s.primary) || series[0];
       const tagY = yp(fwd(lastP.pts[lastP.pts.length - 1].disp));
       g += '<g class="axis">' + yticks.filter(t => Math.abs(yp(t.y) - tagY) > 15).map(t => `<text x="${PL + CW + 10}" y="${(yp(t.y) + 4).toFixed(1)}">${esc(yLabel(t.disp))}</text>`).join('');
-      g += timeTicks(t0, t1, CW).map((t, i, a) => {
+      g += (TS ? intradayTicks(TS, xp, CW) : timeTicks(t0, t1, CW)).map((t, i, a) => {
         const x = xp(t.t);
         if (x < PL + 14 || x > PL + CW - 14) return '';
         return `<text x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle" ${t.strong ? 'font-weight="700"' : ''}>${esc(t.label)}</text>`;
       }).join('') + '</g>';
-      if (pct && lo < 0 && hi > 0) g += `<g class="zero"><line x1="${PL}" x2="${PL + CW}" y1="${yp(fwd(0)).toFixed(1)}" y2="${yp(fwd(0)).toFixed(1)}"/></g>`;
+      if (refDisp != null) {
+        const ry = yp(fwd(refDisp));
+        if (ry >= PT && ry <= PT + CH) g += `<g class="refline"><line x1="${PL}" x2="${PL + CW}" y1="${ry.toFixed(1)}" y2="${ry.toFixed(1)}" stroke="var(--axis)" stroke-dasharray="2 4" stroke-width="1.25"/>
+          <text x="${PL + 4}" y="${(ry - 6).toFixed(1)}" font-size="10.5" fill="var(--muted)" font-weight="600" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${esc(c.refLine.label || '')}</text></g>`;
+      }
+      if (pct && lo < 0 && hi > 0 && refDisp == null) g += `<g class="zero"><line x1="${PL}" x2="${PL + CW}" y1="${yp(fwd(0)).toFixed(1)}" y2="${yp(fwd(0)).toFixed(1)}"/></g>`;
     }
 
     // lines (secondary first so the primary sits on top)
@@ -209,7 +260,7 @@ function lineChart(el, cfg) {
 
     // trade markers along the primary line
     let marks = '';
-    if (c.markers && c.markers.length) {
+    if (c.markers && c.markers.length && !TS) {
       const pp = st.geom.primary.pts;
       const groups = {};
       for (const m of c.markers) {
@@ -258,8 +309,7 @@ function lineChart(el, cfg) {
   function tFromEvent(e) {
     const svg = el.querySelector('svg'); const r = svg.getBoundingClientRect();
     const x = (e.clientX - r.left) * (st.w / r.width);
-    const G = st.geom;
-    return G.t0 + Math.max(0, Math.min(1, (x - G.PL) / G.CW)) * (G.t1 - G.t0);
+    return st.geom.xInv(x);
   }
   function fmtDisp(s, p, G) {
     if (G.pct) return fmt.pct(p.disp);

@@ -84,6 +84,7 @@ Read-only mode is only the visible part of the protection: every write route in 
 | `/api/transactions` | trades recorded in the app since the import | `{action:'add', txn}` / `{action:'delete', id}` |
 | `/api/auth` | — | `POST {pwd, type}` → 12-hour token (`GET ?pwd=` still accepted for the verify workflow) |
 | `/api/quote?ticker=` | Finnhub live quote | — |
+| `/api/intraday?ticker=&range=1d\|5d` | short-term bars for the 1D / 1W views: 5-min (today) or 15-min (last 5 sessions) from Yahoo Finance. Cached a few minutes in Redis; every copy expires after 24 hours | — |
 | `/api/hist?ticker=` | daily closes (Stooq, Yahoo fallback), last good copy kept in Redis | — |
 | `/api/nav-history` | daily NAV snapshots written by the cron | correct specific days |
 | `/api/holdings-log` | holdings change log | — |
@@ -144,6 +145,11 @@ was also recorded in the app, delete the app copy from the Holdings page.
   every source is behind, charts say "thru <date>" on that line and the
   returns table shows "prices thru <date>" instead of a wrong number. To
   preview that state: `STALE=SPY node Lion/scripts/dev-server.cjs`.
+- **1D and 1W views** use short-term prices (5- or 15-minute bars, regular
+  hours, shown in New York time) and squeeze out nights and weekends. On 1D the
+  previous close is the starting point, so % change matches the day change
+  elsewhere. These prices are never kept: Redis copies expire within a day.
+  The unit value (monthly) has no 1D/1W view.
 - **"Dividend reinvestment"** in Activity is a heuristic: a buy under $100
   into a position that's already open. The ledger records DRIP purchases as
   ordinary buys.

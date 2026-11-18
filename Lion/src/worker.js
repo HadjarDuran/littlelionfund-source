@@ -4,6 +4,7 @@ import { handleCredits } from './routes/credits.js';
 import { handleHist } from './routes/hist.js';
 import { handleHoldings } from './routes/holdings.js';
 import { handleHoldingsLog } from './routes/holdingsLog.js';
+import { handleIntraday } from './routes/intraday.js';
 import { handleNavHistory } from './routes/navHistory.js';
 import { handleQuote } from './routes/quote.js';
 import { handleTransactions } from './routes/transactions.js';
@@ -31,6 +32,7 @@ export default {
       case '/api/holdings': return handleHoldings(request, env);
       case '/api/holdings-log': return handleHoldingsLog(request, env);
       case '/api/nav-history': return handleNavHistory(request, env);
+      case '/api/intraday': return handleIntraday(request, env, ctx);
       case '/api/quote': return handleQuote(request, env);
       case '/api/transactions': return handleTransactions(request, env);
       case '/api/units': return handleUnits(request, env);

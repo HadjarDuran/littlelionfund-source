@@ -138,6 +138,24 @@ http.createServer(async (req, res) => {
       const stale = (process.env.STALE || '').toUpperCase().split(',').includes(tk);
       return send(res, 200, stale ? simHist(tk).filter(x => x.date <= '2026-10-15') : simHist(tk));
     }
+    // Intraday bars: simulated 5-min (1d) / 15-min (5d) bars from 9:30 to
+    // 16:00 ET that run from each day's previous close to its daily close.
+    if (route === 'intraday') {
+      const h = simHist(tk), rk = u.searchParams.get('range') === '5d' ? '5d' : '1d';
+      const days = rk === '5d' ? 5 : 1, step = rk === '5d' ? 15 : 5;
+      const r = rng(tk + ':intra:' + h[h.length - 1].date);
+      const points = [];
+      for (let k = h.length - days; k < h.length; k++) {
+        const prev = h[k - 1].close, close = h[k].close, n = 390 / step;
+        const w = [0]; for (let i = 1; i <= n; i++) w.push(w[i - 1] + 0.0012 * gauss(r));
+        for (let i = 0; i <= n; i++) {
+          const f = i / n, lp = Math.log(prev) + (Math.log(close) - Math.log(prev)) * f + (w[i] - f * w[n]);
+          const t = Date.parse(h[k].date + 'T14:30:00Z') + i * step * 60000; // 9:30 ET (EST)
+          points.push({ t: new Date(t).toISOString().replace('.000Z', 'Z'), c: +Math.exp(lp).toFixed(2) });
+        }
+      }
+      return send(res, 200, { points, prevClose: h[h.length - days - 1].close, tz: 'America/New_York', at: Date.now() });
+    }
     if (route === 'quote') {
       const h = simHist(tk), c = h[h.length - 1].close, pc = h[h.length - 2].close;
       return send(res, 200, { c, pc, h: +(Math.max(c, pc) * 1.006).toFixed(2), l: +(Math.min(c, pc) * 0.994).toFixed(2), d: +(c - pc).toFixed(2) });

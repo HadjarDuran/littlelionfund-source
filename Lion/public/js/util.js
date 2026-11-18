@@ -43,20 +43,41 @@ const chgPill = (n, txt) => `<span class="pill ${n >= 0 ? 'pos' : 'neg'}">${arro
 
 // ---- dates (all app dates are 'YYYY-MM-DD' strings in UTC) ----
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Intraday points use full ISO timestamps ("2026-11-18T14:35:00Z"); daily
+// points use plain dates. Timestamps are shown in market time (New York).
+const isTs = s => typeof s === 'string' && s.length > 10;
+const _etFmt = (o) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...o });
+const ET = {
+  time: _etFmt({ hour: 'numeric', minute: '2-digit' }),
+  hour: _etFmt({ hour: 'numeric' }),
+  day: _etFmt({ weekday: 'short', month: 'short', day: 'numeric' }),
+  wd: _etFmt({ weekday: 'short', day: 'numeric' }),
+  key: _etFmt({ year: 'numeric', month: '2-digit', day: '2-digit' }),
+};
 const dt = {
   today: () => new Date().toISOString().slice(0, 10),
-  parse: s => new Date(s + 'T00:00:00Z'),
+  parse: s => (isTs(s) ? new Date(s) : new Date(s + 'T00:00:00Z')),
+  // Market-time helpers for intraday timestamps
+  etTime: s => ET.time.format(new Date(s)),
+  etDay: s => ET.day.format(new Date(s)),
+  etKey: s => { const [m, d, y] = ET.key.format(new Date(s)).split('/'); return `${y}-${m}-${d}`; },
   iso: d => d.toISOString().slice(0, 10),
   addMonths(s, m) { const d = dt.parse(s); d.setUTCMonth(d.getUTCMonth() + m); return dt.iso(d); },
   addDays(s, n) { const d = dt.parse(s); d.setUTCDate(d.getUTCDate() + n); return dt.iso(d); },
   days: (a, b) => Math.round((dt.parse(b) - dt.parse(a)) / 86400000),
-  long(s) { if (!s) return '—'; const [y, m, d] = s.split('-').map(Number); return `${MONTHS[m - 1]} ${d}, ${y}`; },
-  short(s) { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return `${MONTHS[m - 1]} ${d}`; },
+  long(s) { if (!s) return '—'; if (isTs(s)) return `${dt.etDay(s)} · ${dt.etTime(s)} ET`; const [y, m, d] = s.split('-').map(Number); return `${MONTHS[m - 1]} ${d}, ${y}`; },
+  short(s) { if (!s) return ''; if (isTs(s)) return `${dt.etDay(s)} ${dt.etTime(s)}`; const [y, m, d] = s.split('-').map(Number); return `${MONTHS[m - 1]} ${d}`; },
   monYr(s) { if (!s) return ''; const [y, m] = s.split('-').map(Number); return `${MONTHS[m - 1]} '${String(y).slice(2)}`; },
   // Unit value history stores dates as "M/D/YYYY" (how they were typed in).
   fromMDY(s) { const [m, d, y] = String(s).split('/').map(Number); return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; },
   toMDY(s) { const [y, m, d] = s.split('-').map(Number); return `${m}/${d}/${y}`; },
   span(a, b) {
+    if (isTs(a) || isTs(b)) {
+      const min = Math.round((dt.parse(b) - dt.parse(a)) / 60000);
+      if (min < 120) return min + ' min';
+      if (min < 60 * 48) return (min / 60).toFixed(1).replace('.0', '') + ' hrs';
+      return Math.round(min / 1440) + ' days';
+    }
     const days = dt.days(a, b);
     if (days < 60) return days + ' days';
     const mo = Math.round(days / 30.44);
