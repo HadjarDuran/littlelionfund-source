@@ -46,15 +46,18 @@ a different student than the one reading this.
 
 ## Current state (updated Nov 2026, after the dashboard overhaul)
 
-- Static HTML/CSS/JS (no build step) on Vercel, split into small files under
-  `Lion/css` and `Lion/js` (see README.md for the map), with serverless
-  functions for data and quotes.
-- Data lives in Upstash Redis (Vercel KV): current holdings, cash, units,
-  sector weightings, monthly unit-value history since 2012, trades recorded in
-  the app, and a daily NAV snapshot from a cron job.
+- Static HTML/CSS/JS (no build step) served by a **Cloudflare Worker**
+  (`Lion/public/`, split into small files, see README.md for the map), and
+  the same Worker answers every `/api/*` route (`Lion/src/`). Moved from
+  Vercel in Sept 2026; see `Lion/CLOUDFLARE_SETUP.md`.
+- Data lives in Upstash Redis (the same database Vercel KV used): current
+  holdings, cash, units, sector weightings, monthly unit-value history since
+  2012, trades recorded in the app, cached price histories, and a daily NAV
+  snapshot from a Cloudflare cron trigger that also keeps the current
+  month's unit value up to date.
 - The fund's **full trade history since May 2012** (about 1,100 buys, sells,
   splits and spinoffs) is imported from the Master File spreadsheet into
-  `Lion/data/ledger.json` by `Lion/scripts/import_ledger.py`. It powers the
+  `Lion/public/data/ledger.json` by `Lion/scripts/import_ledger.py`. It powers the
   Activity page, realized gains, past holdings and trade markers on charts.
 - Live prices come from Finnhub; daily price history from Stooq, falling back
   to Yahoo Finance. Benchmarks (S&P 500, Nasdaq-100, Dow, Russell 2000, sector
@@ -65,6 +68,11 @@ a different student than the one reading this.
   panel on the left; on phones, a bottom tab bar plus a slide-in sheet.
 - Light and dark themes (follows the device by default), motion that respects
   "reduce motion", ⌘K search.
+- Numbers follow the fund's live spreadsheet ("Little Lion Fund Live
+  Spreadsheet"): portfolio weights are shares of invested money (cash
+  excluded), "Annual %" is total gain ÷ years held (360-day years), and the
+  Weightings page has the same proposed-$ / change-$ rebalancing math as the
+  "Recommended Weightings" tab.
 
 ### Note on the "not a trading platform" principle
 

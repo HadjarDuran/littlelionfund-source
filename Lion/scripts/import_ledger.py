@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Turns the fund's "LLF Activity - Master File.xlsx" trade ledger into
-Lion/data/ledger.json, the historical Transactions dataset the dashboard
+Lion/public/data/ledger.json, the historical Transactions dataset the dashboard
 reads (Activity tab, realized gains, past holdings, chart trade markers).
 
 Usage (from the repo root):
@@ -40,7 +40,7 @@ from pathlib import Path
 
 import openpyxl
 
-OUT = Path(__file__).resolve().parent.parent / "data" / "ledger.json"
+OUT = Path(__file__).resolve().parent.parent / "public" / "data" / "ledger.json"
 
 # Column indexes (0-based) in "LLF Inventory".
 A, B, C, D, E, F = 0, 1, 2, 3, 4, 5

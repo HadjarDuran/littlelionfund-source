@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Little Lion Fund</title>
+  <meta name="description" content="Live dashboard for the Little Lion Fund, the student-run investment fund at State College Area High School." />
+  <meta name="theme-color" content="#f3f5f9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0a0e16" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="/sq-logo.png" />
+  <link rel="apple-touch-icon" href="/sq-logo.png" />
+  <!-- Theme is applied before first paint so dark-mode users never see a white flash. -->
+  <script>
+    try { const t = localStorage.getItem('llf_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) { }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+
+<body>
+  <!-- Loading screen (first visit only; later visits paint from cache) -->
+  <div id="boot" role="status" aria-live="polite">
+    <div class="boot-card">
+      <img class="boot-logo" src="/wide-logo.png" alt="Little Lion Fund" />
+      <div class="boot-msg" id="boot-msg">Loading fund data…</div>
+      <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
+      <div class="boot-detail" id="boot-detail"></div>
+      <div class="boot-actions">
+        <button class="btn ghost sm" id="boot-skip" hidden>Skip chart history</button>
+      </div>
+      <div class="boot-err" id="boot-err"></div>
+    </div>
+  </div>
+
+  <div class="shell" id="shell" hidden>
+    <!-- Navigation lives on the LEFT (desktop rail; slide-in sheet on mobile) -->
+    <aside class="rail" id="rail" aria-label="Main navigation"></aside>
+
+    <main class="main">
+      <header class="topbar" id="topbar">
+        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open navigation"></button>
+        <div class="crumbs" id="crumbs"></div>
+        <div class="top-actions">
+          <button class="search-btn" id="search-btn" aria-label="Search"></button>
+          <span class="asof" id="asof" title="When prices were last refreshed"></span>
+          <button class="icon-btn" id="refresh-btn" aria-label="Refresh prices" title="Refresh prices"></button>
+        </div>
+      </header>
+      <div class="content" id="content" style="view-transition-name: content"></div>
+    </main>
+  </div>
+
+  <nav class="tabbar" id="tabbar" aria-label="Quick navigation" hidden></nav>
+  <div class="scrim" id="scrim"></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- Plain scripts, no build step: each file adds globals the next one uses.
+       Order matters. See README.md for a map of what lives where. -->
+  <script src="/js/icons.js"></script>
+  <script src="/js/util.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/chart.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/views/dashboard.js"></script>
+  <script src="/js/views/performance.js"></script>
+  <script src="/js/views/sectors.js"></script>
+  <script src="/js/views/activity.js"></script>
+  <script src="/js/views/holdings.js"></script>
+  <script src="/js/views/weightings.js"></script>
+  <script src="/js/views/unitvalue.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

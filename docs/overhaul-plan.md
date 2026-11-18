@@ -78,3 +78,17 @@ data, no indicators.
 - CCJ: a 107-share lot bought 2023-01-30 has no recorded sale, but the sheet shows only the 2025 lot as current.
 - HTGC (2021-11-02), VTRS (2023-10-10), JBLU (2016-12-27): sales recorded without a price or proceeds.
 - LLY, LQDA, MCK: one buy row each with a blank date (dated to the previous lot, flagged "estimated").
+
+## Round 2 (2026-11-18): Cloudflare + live spreadsheet
+
+- [x] Hosting moved to Cloudflare earlier on the `cloudflare-migration` branch. The overhaul was merged onto it: frontend in `Lion/public/`, new Worker route `src/routes/transactions.js`, `/api/auth` takes a POST body (GET kept for the verify workflow), class-share tickers in `/api/hist` and `/api/quote`. 4 new unit tests (17 total, passing). `wrangler deploy --dry-run` bundles cleanly.
+- [x] Kept the Cloudflare branch's safety fixes in the new frontend: never save a record that didn't load from the server, show the server's error message, no credits footer.
+- [x] Matched the live spreadsheet: weights over invested money (cash excluded), sheet-style "Annual %" (gain ÷ days/360), rebalancing $ on Weightings, live unit value for "since inception".
+- [x] Preview server seeded from the live spreadsheet (`scripts/make_dev_fixture.py` → `scripts/dev-fixture.json`): totals match the sheet to the cent ($217,155.83 · $52.8227/unit).
+- [x] Unit Value page flags months not yet recorded and likely typos.
+
+### Things found in the live spreadsheet (for a human to check)
+- Unit Value by Month stops at Feb 2026 in this copy (Mar–Oct 2026 missing). The daily job now fills the current month going forward.
+- Oct 2025 unit value is $67.88 between $58.12 (Sep) and $58.12 (Nov). Likely a typo.
+- Recommended Weightings, column E ("S&P in LLF") doesn't add to 100%. The lower table (S&P weight ÷ 0.955) does, and that's what the preview uses.
+- The ROI tab's "33.9% annualized" is gain ÷ weighted invested capital ÷ years (not compounded). By unit value the fund is +448% since May 2012, about 12.5%/yr compounded, vs. the S&P 500's +455% (price only).
