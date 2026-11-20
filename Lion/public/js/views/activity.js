@@ -16,7 +16,11 @@ VIEWS.activity = {
     const rz = realized(), all = allTxns(), past = pastHoldings();
     const trades = all.filter(x => x.type === 'buy' || x.type === 'sell');
     const years = [...new Set(all.map(x => (x.d || '').slice(0, 4)).filter(Boolean))].sort().reverse();
-    const warnings = S.ledger?.warnings?.filter(w => !/no ticker in scope|Unrecognised label/.test(w.msg)) || [];
+    const warnings = S.ledger?.warnings?.filter(w => !/no ticker in scope|Unrecognised label|unlabelled Total row/.test(w.msg)) || [];
+    // Where current Holdings and the trade history disagree (e.g. a stock
+    // bought in the Master File but missing from Holdings). Recent ones first.
+    const checks = holdingChecks().filter(c => c.kind !== 'not-held' || c.recent);
+    const oldGaps = holdingChecks().filter(c => c.kind === 'not-held' && !c.recent);
 
     el.innerHTML = `<div class="view stack">
       <div class="grid g-4 stagger">
@@ -31,6 +35,8 @@ VIEWS.activity = {
         <div class="card" id="act-feed"></div>
         <div class="stack sticky-col" id="act-side">
           <div class="card"><div class="card-h"><div class="card-t">${icon('trophy')}Best &amp; worst exits</div></div><div id="exits" style="padding-top:6px"></div></div>
+          ${checks.length ? `<div class="card"><div class="card-h"><div class="card-t">${icon('triangle-alert')}Holdings vs. trade history</div><div class="spacer"></div><a class="chip" href="#/data">See the data ${icon('arrow-right', 'xs')}</a></div>
+            <div class="card-b"><ul class="hint" style="margin:0 0 0 16px;display:grid;gap:8px" id="check-list"></ul></div></div>` : ''}
           ${warnings.length ? `<div class="card"><div class="card-h"><div class="card-t">${icon('triangle-alert')}Gaps in the source ledger</div></div>
             <div class="card-b"><div class="note warn">${icon('info')}<span>The import flagged ${warnings.length} rows in the Master File that need a human look. Nothing was guessed silently. Fix them in the spreadsheet and re-run the import.</span></div>
             <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show details</summary><ul class="hint" style="margin:8px 0 0 16px;display:grid;gap:6px" id="warn-list"></ul></details></div></div>` : ''}
@@ -43,7 +49,11 @@ VIEWS.activity = {
       label: "'" + y.y.slice(2), v: y.gain,
       tip: `<div class="tip-row"><span class="nm">Long-term</span><b>${fmt.usdSigned(y.lt)}</b></div><div class="tip-row"><span class="nm">Short-term</span><b>${fmt.usdSigned(y.st)}</b></div><div class="tip-row"><span class="nm">Sales</span><b>${y.n}</b></div>`,
     })), { height: 230, color: 'var(--s1)' });
-    const wl = $('#warn-list'); if (wl) warnings.forEach(w => { const li = document.createElement('li'); li.textContent = (w.row ? `Row ${w.row}: ` : '') + w.msg; wl.appendChild(li); });
+    const wl = $('#warn-list'); if (wl) {
+      warnings.forEach(w => { const li = document.createElement('li'); li.textContent = (w.row ? `Row ${w.row}: ` : '') + w.msg; wl.appendChild(li); });
+      oldGaps.forEach(c => { const li = document.createElement('li'); li.textContent = c.msg; wl.appendChild(li); });
+    }
+    const cl = $('#check-list'); if (cl) checks.forEach(c => { const li = document.createElement('li'); li.textContent = c.msg; cl.appendChild(li); });
 
     // best & worst completed exits by realized gain
     const ranked = sortBy(past.filter(p => p.sells && !p.missing), 'gain', 'desc');
@@ -109,7 +119,7 @@ function fitFeed(el, years) {
 function drawPast() {
   const host = $('#past-card'); if (!host) return;
   const list = sortBy(pastHoldings(), pastSort.key === 'held' ? p => dt.days(p.first, p.last) : pastSort.key, pastSort.dir);
-  host.innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('history')}Past holdings</div><div class="card-sub">Every company the fund has owned and since sold</div></div>
+  host.innerHTML = `<div class="card-h bordered"><div class="card-t">${icon('history')}Past holdings</div><div class="card-sub">Every company the trade history shows the fund buying and then selling</div></div>
     <div class="table-wrap" style="max-height:560px"><table class="t"><thead><tr>
       ${thSort('Company', 't', pastSort, 'left')}${thSort('First bought', 'first', pastSort)}${thSort('Last sold', 'last', pastSort)}${thSort('Held', 'held', pastSort)}
       ${thSort('Invested', 'invested', pastSort)}${thSort('Proceeds', 'proceeds', pastSort)}${thSort('Realized gain', 'gain', pastSort)}${thSort('Return', 'ret', pastSort)}</tr></thead>

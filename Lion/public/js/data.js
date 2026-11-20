@@ -45,6 +45,11 @@ const benchName = t => (BENCHMARKS[t] ? BENCHMARKS[t].name : t);
 const TICKER_ALIASES = { FB: 'META', PCLN: 'BKNG', KFT: 'MDLZ', GOOGL: 'GOOGL' };
 
 const DEFAULT_UNITS = 4111.03;
+// A sector target can be left blank ("not set"). When every target is blank,
+// targets are paused: the site shows actual vs. S&P weights only, with no
+// target ticks, drift or rebalancing amounts.
+const targetOf = w => (w && w.p != null && w.p !== '' && isFinite(+w.p) ? +w.p : null);
+const targetsSet = () => (S.weightings || []).some(w => targetOf(w) != null);
 const S = {
   hold: [], cashBank: 0, cashBrok: 0, units: DEFAULT_UNITS, weightings: [], uv: [],
   prices: {}, hist: {}, histErr: {}, ledger: null, added: [],
@@ -221,7 +226,7 @@ function positions() {
       const out = {
         ...h, price, pc, val, cost, pnl: val - cost, pnlPct: cost ? (val - cost) / cost * 100 : 0,
         dayChg: (price - pc) * h.sh, dayPct: pc ? (price - pc) / pc * 100 : 0,
-        weight: eq ? val / eq * 100 : 0, held, hasPrice: price > 0,
+        weight: eq ? val / eq * 100 : 0, held, hasPrice: price > 0, since: heldSince(h),
       };
       // "Annual %" exactly as the fund spreadsheet computes it: total % gain
       // divided by years held, counting a year as 360 days. It's a simple
@@ -312,9 +317,15 @@ function realized() {
   });
 }
 
-// Closed positions = every ticker in the trade history the fund no longer holds.
+// Closed positions = tickers the fund no longer holds AND that the trade
+// history shows being sold. A ticker that was bought, never sold and isn't in
+// current holdings is NOT a past holding: it's a gap between the two records
+// (see holdingChecks), so it's never shown as "sold for $0".
 function pastHoldings() {
-  return memo('past', () => {
+  return memo('past', () => pastAll().filter(o => o.sells));
+}
+function pastAll() {
+  return memo('pastAll', () => {
     const cur = new Set(S.hold.map(h => h.t));
     const m = {};
     for (const x of allTxns()) {
@@ -330,6 +341,68 @@ function pastHoldings() {
   });
 }
 
+// Where the current position in a ticker started, according to the trade
+// history: the first buy after the last sale that emptied it. (MCK was sold
+// in Feb 2026 and bought back in March, so its position starts in March,
+// whatever an older "purchase date" says.)
+function ledgerPositions() {
+  return memo('ledgerPos', () => {
+    const m = {};
+    const list = [...allTxns()].reverse(); // oldest first
+    for (const x of list) {
+      const t = TICKER_ALIASES[x.t] || x.t;
+      if (!t || (x.type !== 'buy' && x.type !== 'sell')) continue;
+      const o = m[t] || (m[t] = { t, open: 0, since: null, lastBuy: null, buys: 0, sells: 0 });
+      if (x.type === 'buy') {
+        if (o.open <= 0.0001 || !o.since) o.since = x.d;
+        o.open += x.sh || 0; o.lastBuy = x.d; o.buys++;
+      } else {
+        const before = o.open;
+        o.open -= x.sh || 0; o.sells++;
+        if (o.open < 0.05 || o.open < before * 0.01) { o.open = 0; o.since = null; }
+      }
+    }
+    return m;
+  });
+}
+
+// Disagreements between current Holdings and the trade history, so a gap in
+// one record is shown instead of quietly turning into a wrong number.
+function holdingChecks() {
+  return memo('checks', () => {
+    if (!S.ledger) return [];
+    const out = [];
+    const lp = ledgerPositions();
+    for (const o of pastAll()) {
+      if (o.sells) continue;
+      const recent = o.last >= dt.addMonths(dt.today(), -24);
+      out.push({ t: o.t, kind: 'not-held', recent, d: o.last,
+        msg: `${o.t}: bought ${dt.long(o.last)} (${fmt.usd(o.invested, 0)}), no sale on record, but not in current Holdings.` +
+          (recent ? ' If the fund still owns it, add it on the Holdings page; if it was sold, the sale is missing from the Master File.' : ' Probably sold, merged or spun off without a sale row in the Master File.') });
+    }
+    for (const h of S.hold) {
+      const o = lp[TICKER_ALIASES[h.t] || h.t];
+      if (!o || !o.buys) { out.push({ t: h.t, kind: 'no-trades', msg: `${h.t}: in current Holdings but there's no purchase of it in the trade history.` }); continue; }
+      if (Math.abs(o.open - h.sh) > Math.max(0.02, h.sh * 0.01))
+        out.push({ t: h.t, kind: 'shares',
+          msg: `${h.t}: Holdings has ${fmt.shares(h.sh)} shares; the trade history adds up to ${fmt.shares(o.open)}. Holdings is used for values; a buy or sale is probably missing from one of them.` });
+      else if (h.d && o.since && Math.abs(dt.days(h.d, o.since)) > 31)
+        out.push({ t: h.t, kind: 'date', d: o.since,
+          msg: `${h.t}: Holdings says purchased ${dt.long(h.d)}; the trade history says the current position was bought ${dt.long(o.since)}. Charts use the trade-history date.` });
+    }
+    return out;
+  });
+}
+// The date the current position started: trade history first, Holdings' own
+// date as the fallback.
+// Only trusted when the trade history's share count matches Holdings (CCJ's
+// history is missing a sale, so its own date is kept).
+function heldSince(h) {
+  const o = S.ledger && ledgerPositions()[TICKER_ALIASES[h.t] || h.t];
+  const agrees = o && o.since && Math.abs(o.open - h.sh) <= Math.max(0.02, h.sh * 0.01);
+  return (agrees && o.since) || h.d || null;
+}
+
 // ---- time series for charts. A series is [{d:'YYYY-MM-DD', v:number}] ----
 
 // The fund's real, hand-recorded month-end unit value since 2012. This is the
@@ -339,10 +412,28 @@ function pastHoldings() {
 // month's last day; that row is re-dated to today so nothing claims a future
 // date. When every holding has a live price, today's live unit value is
 // added as the latest point, so "since inception" is always current.
+// Month-end rows that jump more than 10% and fall back more than 10% the
+// next month (Oct 2025: $58.12 → $67.88 → $58.12). Almost certainly typos, so
+// they're left out of every return and chart and flagged on the Unit Value
+// page until someone corrects them.
+function uvSpikes() {
+  return memo('uvSpikes', () => {
+    const rows = S.uv.map(r => ({ d: dt.fromMDY(r.d), u: r.u })).filter(r => r.u > 0).sort((a, b) => a.d.localeCompare(b.d));
+    const out = [];
+    rows.forEach((r, k) => {
+      const a = rows[k - 1], b = rows[k + 1];
+      if (!a || !b) return;
+      const up = r.u / a.u - 1, back = b.u / r.u - 1;
+      if (Math.abs(up) > 0.1 && Math.abs(back) > 0.1 && Math.sign(up) !== Math.sign(back)) out.push(r);
+    });
+    return out;
+  });
+}
 function fundSeries() {
   return memo('fund', () => {
     const today = dt.today();
-    const s = S.uv.map(r => ({ d: dt.fromMDY(r.d), v: r.u })).filter(p => p.v > 0)
+    const skip = new Set(uvSpikes().map(r => r.d));
+    const s = S.uv.map(r => ({ d: dt.fromMDY(r.d), v: r.u })).filter(p => p.v > 0 && !skip.has(p.d))
       .map(p => (p.d > today ? { ...p, d: today } : p)).sort((a, b) => a.d.localeCompare(b.d));
     const t = totals();
     if (s.length && t.count && t.priced === t.count && t.unit > 0) {
@@ -376,7 +467,8 @@ function holdingsValueSeries(list) {
     for (const d of cal) {
       let v = 0, any = false;
       parts.forEach(({ p, h }, k) => {
-        if (p.d && d < p.d) return;
+        const from = p.since || p.d;
+        if (from && d < from) return;
         while (idx[k] < h.length - 1 && h[idx[k] + 1].date <= d) idx[k]++;
         if (h[idx[k]].date <= d) { v += h[idx[k]].close * p.sh; any = true; }
       });
@@ -406,7 +498,8 @@ function holdingsReturnIndex(list) {
       parts.forEach(({ p, h }, k) => {
         while (idx[k] < h.length - 1 && h[idx[k] + 1].date <= d) idx[k]++;
         const px = idx[k] >= 0 ? h[idx[k]].close : null;
-        const held = !p.d || d >= p.d;
+        const from = p.since || p.d;
+        const held = !from || d >= from;
         if (held && px != null) {
           live = true;
           if (prevPx[k] != null) { num += px * p.sh; den += prevPx[k] * p.sh; }

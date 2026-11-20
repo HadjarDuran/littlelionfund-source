@@ -43,14 +43,14 @@ VIEWS.sectors = {
         const bStale = b && end && dt.days(b[b.length - 1].d, end) > 5;
         const br = b && end && !bStale ? periodReturn(b, since || from, end) : null;
         const tw = targets[g.s];
-        return { ...g, r, br, since, loading: !idx.length, diff: r != null && br != null ? r - br : null, target: tw ? +tw.p : null, sp: tw ? +tw.sp : null };
+        return { ...g, r, br, since, loading: !idx.length, diff: r != null && br != null ? r - br : null, target: targetOf(tw), sp: tw ? +tw.sp : null };
       });
-      $('#sec-table').innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th class="left">Sector</th><th>LLF return</th><th>Benchmark</th><th>Difference</th><th>Weight</th><th>Target</th><th>S&amp;P 500 weight</th><th>Value</th></tr></thead><tbody>
+      $('#sec-table').innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th class="left">Sector</th><th>LLF return</th><th>Benchmark</th><th>Difference</th><th>Weight</th>${targetsSet() ? '<th>Target</th>' : ''}<th>S&amp;P 500 weight</th><th>Value</th></tr></thead><tbody>
         ${rows.map(r => `<tr class="click" data-s="${esc(r.s)}"><td class="left"><span class="row" style="gap:9px"><span class="dot" style="background:${sectorColor(r.s)}"></span><span class="strong">${esc(r.s)}</span></span></td>
           <td class="${signCls(r.r)} strong">${r.r != null ? fmt.pct(r.r, 1) + (r.since ? ` <span class="badge" title="Holdings in this sector were bought less than ${RANGE_LABEL[secRange].toLowerCase()} ago. Both sides are measured from the first purchase">since ${dt.monYr(r.since)}</span>` : '') : r.loading ? '<span class="skel" style="display:inline-block;width:40px;height:12px"></span>' : '<span class="muted">—</span>'}</td>
           <td class="${signCls(r.br)}" title="${esc(sectorBenchName(r.s))}">${r.br != null ? fmt.pct(r.br, 1) : '<span class="muted">—</span>'} <span class="badge" style="margin-left:4px">${esc(sectorBench(r.s).join('+'))}</span></td>
           <td>${r.diff != null ? `<span class="pill ${r.diff >= 0 ? 'pos' : 'neg'}">${arrowIcon(r.diff)}${Math.abs(r.diff).toFixed(1)} pts</span>` : '—'}</td>
-          <td>${r.weight.toFixed(1)}%</td><td class="muted">${r.target != null ? r.target + '%' : '—'}</td><td class="muted">${r.sp != null ? r.sp + '%' : '—'}</td><td class="strong">${fmt.usd(r.val, 0)}</td></tr>`).join('')}
+          <td>${r.weight.toFixed(1)}%</td>${targetsSet() ? `<td class="muted">${r.target != null ? r.target + '%' : '—'}</td>` : ''}<td class="muted">${r.sp != null ? r.sp + '%' : '—'}</td><td class="strong">${fmt.usd(r.val, 0)}</td></tr>`).join('')}
       </tbody></table></div><div class="chart-foot">${icon('info')}Weight = share of invested money (excludes cash). Targets and S&amp;P weights come from the Weightings page.</div>`;
       $$('tr[data-s]', el).forEach(tr => tr.onclick = () => go('sectors/' + encodeURIComponent(tr.dataset.s)));
     }
@@ -84,7 +84,7 @@ function renderSectorDetail(el, sector) {
   const tw = (S.weightings || []).find(w => w.s === sector);
   el.innerHTML = `<div class="view stack">
     <div class="grid g-4 stagger">
-      <div class="card kpi"><div class="kpi-label">${icon('wallet')}Market value</div><div class="kpi-value tabular">${cu(g.val)}</div><div class="kpi-foot">${g.weight.toFixed(1)}% of invested${tw ? ` · target ${tw.p}%` : ''}</div></div>
+      <div class="card kpi"><div class="kpi-label">${icon('wallet')}Market value</div><div class="kpi-value tabular">${cu(g.val)}</div><div class="kpi-foot">${g.weight.toFixed(1)}% of invested${targetOf(tw) != null ? ` · target ${targetOf(tw)}%` : ''}</div></div>
       <div class="card kpi"><div class="kpi-label">${icon('trending-up')}Unrealized gain</div><div class="kpi-value tabular ${signCls(g.pnl)}">${cu(g.pnl, 'usdSigned')}</div><div class="kpi-foot">${fmt.pct(g.pnlPct)} on ${fmt.usd(g.cost, 0)} cost</div></div>
       <div class="card kpi"><div class="kpi-label">${icon('calendar')}Today</div><div class="kpi-value tabular ${signCls(g.day)}">${cu(g.day, 'usdSigned')}</div><div class="kpi-foot">${g.n} holdings</div></div>
       <a class="card kpi interactive" href="#/debrief/${encodeURIComponent(sector)}" style="color:inherit"><div class="kpi-label">${icon('presentation')}Debrief this sector</div><div class="kpi-value" style="font-size:18px">Step through ${g.n} stock${g.n > 1 ? 's' : ''}</div><div class="kpi-foot">Each stock vs. the whole sector</div></a>
@@ -125,7 +125,8 @@ function renderSectorDetail(el, sector) {
           ...(b && ctx.compare.includes(benchKey) ? [{ key: benchKey, name: sectorBenchName(sector), points: sliceSeries(b, from, ctx.to), dashed: true, color: 'var(--text-2)', removable: true }] : []),
           ...compareSeries({ ...ctx, compare: ctx.compare.filter(t => t !== benchKey && !sectorBench(sector).includes(t)) }, from, ctx.to),
         ],
-        note: ctx.mode === 'pct' ? `Time-weighted return of this sector's current holdings. Compare → "This sector" adds ${sectorBenchName(sector)} (price return).` : 'Market value of this sector\'s current holdings from each purchase date.',
+        warn: !from || dt.days(from, end) > 400 ? 'Current holdings only' : null,
+        note: ctx.mode === 'pct' ? `Time-weighted return of this sector's current holdings (stocks sold earlier aren't included, so long ranges flatter it). Compare → "This sector" adds ${sectorBenchName(sector)} (price return).` : 'Market value of this sector\'s current holdings from each purchase date.',
       };
     },
   });

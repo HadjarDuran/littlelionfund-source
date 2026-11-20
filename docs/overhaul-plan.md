@@ -3,7 +3,7 @@ title: "LLF Dashboard Overhaul — Plan"
 type: plan
 status: complete
 date: 2026-11-18
-updated: 2026-11-18
+updated: 2026-11-20
 summary: "Plan for the Little Lion Fund dashboard overhaul: full trade-history import, benchmarks, pro chart controls, right-side navigation, light/dark theme, motion, and a QA pass."
 owner: shared
 project: littlelionfund
@@ -97,3 +97,19 @@ data, no indicators.
 
 - [x] 1D / 1W views from Yahoo Finance's free intraday bars (`/api/intraday`), cached minutes and expiring within 24 h. Verified on production.
 - [x] Sector debrief page (`#/debrief/<sector>/<ticker>`) for the morning meeting: each stock on the left, the whole sector (value-weighted) on the right, keyboard stepping, full-screen Present mode.
+
+## Round 4 (2026-11-20): class feedback (Luke Alexander, Mrs. Miller)
+
+Honing, not an overhaul. Full write-up: `docs/numbers-review-2026-11.md`.
+
+- [x] Performance charts default to the unit value (the fund's actual record). The holdings backtest is renamed "Today's holdings (what-if)" and warns beyond a year.
+- [x] Returns table: total return plus per-year rate; likely-typo unit value months (Oct 2025 $67.88) left out and footnoted; start month picked as the nearest record either side.
+- [x] Ledger import: unlabelled running-total rows (MCK row 218, LQDA row 176) are no longer read as purchases. Each trade keeps its Master File row number.
+- [x] Past holdings only lists positions that were sold. RKLB (bought, not in live Holdings) becomes a data check.
+- [x] Purchase dates for charts come from the trade history when it agrees with Holdings.
+- [x] Sector targets can be blank; "Clear all targets" on Weightings; target UI hides site-wide when none are set.
+- [x] New Data page (`#/data`) with CSV downloads.
+- [x] Sector debrief "Whole sector (draft)" layout: sector chart + a small chart per holding.
+- [x] Daily NAV job: missing quote uses the last good price instead of $0 (unit-tested).
+
+Needs a person: add RKLB on Holdings (live site), correct Oct 2025 in the Unit Value record, fill in Mar–Oct 2026 month-ends, confirm units have never changed.

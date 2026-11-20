@@ -31,6 +31,9 @@ VIEWS.debrief = {
     sectorBench(sector).forEach(t => getHist(t));
     const si = groups.findIndex(x => x.s === sector);
     const color = sectorColor(sector);
+    // Two layouts: "One at a time" (step through stocks) and "Whole sector"
+    // (draft, from class feedback: every holding's chart on one page).
+    const layout = store.get('llf_debrief_layout', 'one') === 'all' ? 'all' : 'one';
 
     el.innerHTML = `<div class="view">
       <div class="card db-bar">
@@ -39,10 +42,21 @@ VIEWS.debrief = {
           <span class="dot" style="background:${sectorColor(x.s)};width:8px;height:8px"></span>${esc(SECTORS[x.s]?.short || x.s)}<span class="muted" style="font-weight:600">${x.weight.toFixed(0)}%</span></button>`).join('')}</div>
         <button class="icon-btn" data-sec-step="1" aria-label="Next sector" title="Next sector (→)">${icon('chevron-right')}</button>
         <div class="spacer"></div>
-        <span class="hint db-keys">${icon('keyboard', 'sm')} ↑↓ stocks · ←→ sectors</span>
+        <span id="db-layout">${seg('dblayout', [['one', `${icon('presentation', 'sm')}One at a time`, 'Step through each stock while the sector stays on screen'], ['all', `${icon('layout-grid', 'sm')}Whole sector <span class="badge" style="margin-left:4px">draft</span>`, 'Every holding in the sector on one page']], layout)}</span>
+        <span class="hint db-keys">${icon('keyboard', 'sm')} ${layout === 'all' ? '←→ sectors' : '↑↓ stocks · ←→ sectors'}</span>
         <button class="btn ghost sm" id="db-present" title="Full screen for the meeting">${icon('maximize', 'sm')}Present</button>
       </div>
-      <div class="grid g-main mt db-grid">
+      ${layout === 'all' ? `<div class="grid g-main mt db-grid">
+        <div class="stack" id="db-left">
+          <div id="db-secchart"></div>
+          <div class="card"><div class="card-h"><div><div class="card-t">${icon('layout-grid')}Every ${esc(short0(sector))} holding</div><div class="card-sub">Each stock (solid) vs. the sector as a whole (dashed). Click one to talk through it.</div></div><div class="spacer"></div><div id="db-mrange"></div></div>
+            <div class="card-b db-multi" id="db-multi"></div></div>
+        </div>
+        <div class="stack sticky-col" id="db-right">
+          <div class="card" id="db-sector"></div>
+          <div class="card" id="db-comp"></div>
+        </div>
+      </div>` : `<div class="grid g-main mt db-grid">
         <div class="stack" id="db-left">
           <div class="card" id="db-focus"></div>
           <div id="db-chart"></div>
@@ -52,13 +66,15 @@ VIEWS.debrief = {
           <div class="card" id="db-sector"></div>
           <div class="card" id="db-comp"></div>
         </div>
-      </div></div>`;
+      </div>`}</div>`;
+    onSeg(el, 'dblayout', v => { store.set('llf_debrief_layout', v); render({ quiet: true }); });
 
+    let pickMini = () => { };
     // ---- right: the sector, always in view ----
     function drawSector() {
       const t = totals(), tw = (S.weightings || []).find(w => w.s === sector);
       const prevVal = g.val - g.day, dayPct = prevVal ? g.day / prevVal * 100 : 0;
-      const target = tw ? +tw.p : null, sp = tw ? +tw.sp : null;
+      const target = targetOf(tw), sp = tw ? +tw.sp : null;
       const toTarget = target != null ? target / 100 * t.equity - g.val : null;
       const mx = Math.max(g.weight, target || 0, sp || 0, 1) * 1.15;
       const bar = (label, v, c) => v == null ? '' : `<div class="db-wbar"><span class="muted">${label}</span><span class="db-track"><i style="width:${v / mx * 100}%;background:${c}"></i></span><b class="tabular">${v.toFixed(1)}%</b></div>`;
@@ -100,7 +116,7 @@ VIEWS.debrief = {
               <div class="db-mini"><span class="db-track"><i style="width:${w}%;background:${color}"></i></span><span class="tabular muted">${w.toFixed(1)}%</span></div></div>
             <div class="li-end"><div class="${signCls(p.dayPct)} strong tabular">${p.hasPrice ? fmt.pct(p.dayPct) : '—'}</div><div class="li-sub ${signCls(p.dayChg)}">${p.hasPrice ? fmt.usdSigned(p.dayChg) : ''}</div></div></button>`;
         }).join('')}</div>`;
-      $$('#db-comp [data-t]').forEach(b => b.onclick = () => focus(b.dataset.t));
+      $$('#db-comp [data-t]').forEach(b => b.onclick = () => (layout === 'all' ? pickMini(b.dataset.t) : focus(b.dataset.t)));
     }
 
     // ---- left: the stock being discussed ----
@@ -136,7 +152,7 @@ VIEWS.debrief = {
           ${stat('Unrealized', `${fmt.usdSigned(p.pnl)} <small>(${fmt.pct(p.pnlPct, 1)})</small>`, signCls(p.pnl))}
           ${stat('Annual %', p.annual != null ? fmt.pct(p.annual, 1) : '—', signCls(p.annual), 'Total % gain ÷ years held, as on the fund spreadsheet')}
           ${stat('1-year price', p.ttm != null ? fmt.pct(p.ttm, 1) : '—', signCls(p.ttm))}
-          ${stat('Held since', p.d ? dt.monYr(p.d) : '—')}
+          ${stat('Held since', p.since ? dt.monYr(p.since) : '—', '', 'When the current position was bought, from the trade history')}
         </div>
         ${last ? `<div class="hint" style="margin-top:4px">${icon(last.type === 'buy' ? 'arrow-down-to-line' : 'arrow-up-from-line', 'xs')} Last trade: ${last.type === 'buy' ? 'bought' : 'sold'} ${fmt.shares(last.sh)} sh${last.px ? ' @ ' + fmt.usd(last.px) : ''} on ${dt.long(last.d)}</div>` : ''}
       </div>`;
@@ -150,7 +166,8 @@ VIEWS.debrief = {
 
     // chart: the stock vs. the whole sector (weighted by value), optional ETF
     const etf = sectorBench(sector)[0];
-    const short = SECTORS[sector]?.short || sector;
+    const short = short0(sector);
+    if (layout === 'all') return debriefWhole(el, { g, sector, stocks, color, etf, short, groups, si, drawSector, drawComp, setPick: fn => { pickMini = fn; } });
     const card = chartCard($('#db-chart'), {
       id: 'debrief', title: '', titleIcon: 'chart-line', height: 320, intraday: true,
       defaults: { range: '1W', mode: 'pct', compare: [] },
@@ -235,7 +252,7 @@ VIEWS.debrief = {
     const strip = el.querySelector('.db-sectors'), activeChip = el.querySelector('.db-sectors .chip.on');
     if (strip && activeChip) strip.scrollLeft = activeChip.offsetLeft - strip.offsetLeft - strip.clientWidth / 2 + activeChip.offsetWidth / 2;
     // sector returns fill in as price histories arrive
-    const onHist = debounce(() => { if (document.body.contains(el.firstChild)) drawSector(); }, 250);
+    const onHist = debounce(() => { if ($('#db-focus')) drawSector(); }, 250);
     histListeners.add(onHist);
     return () => { card.destroy(); histListeners.delete(onHist); document.removeEventListener('keydown', onKey); };
   },
@@ -259,4 +276,116 @@ function togglePresent() {
     document.exitFullscreen?.();
     if (!sh._wasCollapsed && sh.classList.contains('collapsed')) toggleCollapse();
   }
+}
+
+const short0 = s => SECTORS[s]?.short || s;
+
+// "Whole sector" layout (draft): the sector's weighted line on top, then a
+// small chart for every holding, each against the sector. Keeps the right
+// column (sector summary + composition) from the one-at-a-time layout.
+const DB_MINI_RANGES = ['1D', '1W', '1M', '3M', 'YTD', '1Y'];
+function debriefWhole(el, { g, sector, stocks, color, etf, short, groups, si, drawSector, drawComp, setPick }) {
+  let mr = store.get('llf_debrief_mrange', '3M');
+  if (!DB_MINI_RANGES.includes(mr)) mr = '3M';
+  const secName = `${short} sector (weighted)`;
+  const card = chartCard($('#db-secchart'), {
+    id: 'debrief-all', title: `The ${short} sector`, titleIcon: 'chart-line', height: 300, intraday: true,
+    defaults: { range: '3M', mode: 'pct', compare: [DEBRIEF_ETF] },
+    extraCompare: [{ t: DEBRIEF_ETF, name: `Sector ETF: ${sectorBenchName(sector)}` }],
+    build(ctx) {
+      const wantEtf = ctx.compare.includes(DEBRIEF_ETF);
+      const others = ctx.compare.filter(x => x !== DEBRIEF_ETF);
+      if (isIntraRange(ctx.range)) {
+        ensureIntraday([...g.pos.map(p => p.t), ...(wantEtf ? [etf] : [])], ctx.range);
+        const hi = holdingsIntraday(g.pos, ctx.range);
+        if (!hi.points || hi.points.length < 2) return { series: [], empty: 'Loading short-term prices…' };
+        return {
+          series: [{ key: 'SEC', name: secName, color, points: hi.points, primary: true },
+            ...(wantEtf ? [{ key: DEBRIEF_ETF, name: benchName(etf), points: intradaySeries(etf, ctx.range), dashed: true, color: 'var(--text-2)', removable: true }] : []),
+            ...compareIntraday({ ...ctx, compare: others })],
+          xIndex: true, note: `Every ${short} holding combined by what the fund owns of each.`,
+        };
+      }
+      const idx = holdingsReturnIndex(g.pos.filter(p => histOf(p.t)));
+      if (idx.length < 2) return { series: [], empty: 'Loading price history…' };
+      const end = ctx.to || idx[idx.length - 1].d;
+      const from = ctx.from || rangeStart(ctx.range, end);
+      const b = wantEtf ? sectorBenchSeries(sector) : null;
+      return {
+        series: [{ key: 'SEC', name: secName, color, points: sliceSeries(idx, from, ctx.to), primary: true },
+          ...(b ? [{ key: DEBRIEF_ETF, name: sectorBenchName(sector), points: sliceSeries(b, from, ctx.to), dashed: true, color: 'var(--text-2)', removable: true }] : []),
+          ...compareSeries({ ...ctx, compare: others }, from, ctx.to)],
+        note: `Every ${short} holding combined by what the fund owns of each (time-weighted), vs. ${sectorBenchName(sector)}.`,
+      };
+    },
+  });
+
+  const charts = [];
+  // One stock's line and the sector's line over the chosen range, both in %.
+  function miniSeries(p) {
+    if (isIntraRange(mr)) {
+      const sp = intradaySeries(p.t, mr), sec = g.pos.length > 1 ? holdingsIntraday(g.pos, mr).points : null;
+      return { stock: sp, sec, xIndex: true };
+    }
+    const s = priceSeries(p.t); if (!s) return { stock: null };
+    const end = s[s.length - 1].d, from = rangeStart(mr, end);
+    const idx = g.pos.length > 1 ? holdingsReturnIndex(g.pos.filter(x => histOf(x.t))) : null;
+    return { stock: sliceSeries(s, from), sec: idx && idx.length ? sliceSeries(idx, from) : null };
+  }
+  const ret = pts => (pts && pts.length > 1 ? (pts[pts.length - 1].v / pts[0].v - 1) * 100 : null);
+  function drawMulti() {
+    charts.splice(0).forEach(c => c.destroy());
+    if (isIntraRange(mr)) ensureIntraday(g.pos.map(p => p.t), mr);
+    const host = $('#db-multi'); if (!host) return;
+    host.innerHTML = stocks.map(p => {
+      const w = g.val ? p.val / g.val * 100 : 0;
+      const m = miniSeries(p), r = ret(m.stock), rs = ret(m.sec);
+      return `<div class="db-mcard" data-t="${esc(p.t)}" tabindex="0" role="button" aria-label="Talk through ${esc(p.t)}">
+        <div class="row" style="gap:10px">${tkLogo(p.t, 30)}<div style="min-width:0;flex:1"><div class="strong">${esc(p.t)}</div><div class="hint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.n || '')}</div></div>
+          <div style="text-align:right"><div class="strong tabular">${p.hasPrice ? fmt.usd(p.price) : '—'}</div><div class="${signCls(p.dayPct)} tabular" style="font-size:12px;font-weight:700">${p.hasPrice ? fmt.pct(p.dayPct) : ''}</div></div></div>
+        <div class="db-mchart" data-mc="${esc(p.t)}"></div>
+        <div class="row db-mfoot"><span><b class="${signCls(r)} tabular">${fmt.pct(r, 1)}</b> <span class="muted">${mr}</span></span>
+          <span class="muted">sector <b class="${signCls(rs)} tabular">${fmt.pct(rs, 1)}</b></span><span class="spacer"></span>
+          <span class="muted tabular" title="Share of the sector by value">${w.toFixed(1)}% · ${fmt.usdCompact(p.val)}</span></div>
+      </div>`;
+    }).join('');
+    stocks.forEach(p => {
+      const box = host.querySelector(`[data-mc="${CSS.escape(p.t)}"]`);
+      const m = miniSeries(p);
+      if (!m.stock || m.stock.length < 2) { box.innerHTML = `<div class="skel" style="height:96px"></div>`; return; }
+      charts.push(lineChart(box, {
+        mode: 'pct', height: 96, compact: true, xIndex: m.xIndex,
+        series: [{ key: p.t, name: p.t, color: 'var(--text)', points: m.stock, primary: true },
+          ...(m.sec && m.sec.length > 1 ? [{ key: 'SEC', name: 'Sector', color, points: m.sec, dashed: true }] : [])],
+      }));
+    });
+    $$('.db-mcard', host).forEach(c => {
+      const open = () => { store.set('llf_debrief_layout', 'one'); go(`debrief/${encodeURIComponent(sector)}/${encodeURIComponent(c.dataset.t)}`); };
+      c.onclick = open; c.onkeydown = e => { if (e.key === 'Enter') open(); };
+    });
+  }
+  setPick(t => {
+    const c = $(`.db-mcard[data-t="${CSS.escape(t)}"]`); if (!c) return;
+    c.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
+  });
+  $('#db-mrange').innerHTML = seg('dbmr', DB_MINI_RANGES, mr);
+  onSeg(el, 'dbmr', v => { mr = v; store.set('llf_debrief_mrange', v); drawMulti(); });
+
+  const stepSector = d => { const n = groups[(si + d + groups.length) % groups.length]; go('debrief/' + encodeURIComponent(n.s)); };
+  $$('[data-sec]', el).forEach(b => b.onclick = () => go('debrief/' + encodeURIComponent(b.dataset.sec)));
+  $$('[data-sec-step]', el).forEach(b => b.onclick = () => stepSector(+b.dataset.secStep));
+  $('#db-present').onclick = togglePresent;
+  const onKey = e => {
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || $('.modal-root') || $('.palette') || $('.pop') || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); stepSector(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); stepSector(-1); }
+  };
+  document.addEventListener('keydown', onKey);
+  drawSector(); drawComp(); drawMulti();
+  const onData = debounce(() => { if ($('#db-multi')) { drawSector(); drawMulti(); } }, 300);
+  histListeners.add(onData);
+  // short-term prices arrive separately; redraw the grid when they do
+  const iv = setInterval(() => { if (isIntraRange(mr)) onData(); }, 4000);
+  return () => { card.destroy(); charts.forEach(c => c.destroy()); histListeners.delete(onData); document.removeEventListener('keydown', onKey); clearInterval(iv); };
 }

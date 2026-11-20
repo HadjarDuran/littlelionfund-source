@@ -16,7 +16,8 @@ const NAV = [
   // the password on the page itself. Holdings is locked entirely.
   { id: 'weightings', label: 'Weightings', icon: 'scale', key: '6' },
   { id: 'unitvalue', label: 'Unit Value', icon: 'coins', key: '7' },
-  { id: 'holdings', label: 'Holdings', icon: 'briefcase', key: '8', manage: 'holdings' },
+  { id: 'data', label: 'Data', icon: 'database', key: '8' },
+  { id: 'holdings', label: 'Holdings', icon: 'briefcase', key: '9', manage: 'holdings' },
 ];
 const REFRESH_SECONDS = 120;
 let route = { view: 'dashboard', params: [] };

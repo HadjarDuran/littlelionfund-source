@@ -4,16 +4,23 @@
 // chart series) and benchReturns() (the fund-vs-benchmarks returns table).
 // ---------------------------------------------------------------------------
 
+// "Unit value" is the fund's actual record and the default. "Today's
+// holdings" re-prices the current portfolio back in time: useful for 1D/1W
+// and for seeing how today's picks have done, but over long ranges it's a
+// what-if that leaves out every stock the fund sold along the way and the
+// cash it held, so it reads far better than the fund really did.
 const PORTFOLIO_SOURCES = [
-  ['holdings', 'Holdings', 'Today\'s holdings, priced daily'],
-  ['fund', 'Unit value', 'The fund\'s recorded month-end unit value since 2012'],
+  ['fund', 'Unit value', 'The fund\'s actual return: recorded month-end unit value since 2012, plus today\'s live value'],
+  ['holdings', 'Today\'s holdings', 'What-if: today\'s holdings priced back to when each position was bought. Not the fund\'s actual return'],
 ];
 RANGE_LABEL.BUY = 'Since first buy';
 
 function portfolioBuild(ctx) {
   if (isIntraRange(ctx.range)) {
-    if (ctx.source === 'fund') return { series: [], empty: 'The unit value is recorded once a month, so it has no 1D or 1W view. Switch to Holdings above.' };
-    return intradayBuild(positions(), ctx, 'LLF holdings');
+    // The unit value is monthly, so 1D/1W always show today's holdings.
+    const out = intradayBuild(positions(), ctx, 'LLF holdings');
+    if (ctx.source === 'fund' && out.series?.length) out.note = 'The unit value is recorded monthly, so 1D and 1W show today\'s holdings. ' + (out.note || '');
+    return out;
   }
   if (ctx.source === 'fund') {
     const base = fundSeries();
@@ -33,9 +40,14 @@ function portfolioBuild(ctx) {
   if (!raw.length) return { series: [], empty: S.hold.length ? 'Loading price history…' : 'No holdings yet' };
   const end = ctx.to || raw[raw.length - 1].d;
   const from = ctx.from || rangeStart(ctx.range, end);
+  // Beyond a year this line is mostly hindsight: a stock bought in 2012 and
+  // still held counts its whole run, while the ones sold at a loss vanish.
+  const long = !from || dt.days(from, end) > 400;
   return {
-    series: [{ key: 'hold', name: 'LLF holdings', points: sliceSeries(raw, from, ctx.to), primary: true }, ...compareSeries(ctx, from, ctx.to)],
-    note: ctx.mode === 'pct'
+    series: [{ key: 'hold', name: 'Today\'s holdings (what-if)', points: sliceSeries(raw, from, ctx.to), primary: true }, ...compareSeries(ctx, from, ctx.to)],
+    warn: long ? 'What-if, not the fund\'s return' : null,
+    note: long ? 'Only the stocks the fund owns today, priced back to when each was bought. It leaves out every stock that was sold (including the losers) and the cash, so over long periods it looks far better than the fund did. For the fund\'s actual return, switch to Unit value.'
+      : ctx.mode === 'pct'
       ? 'Time-weighted return of today\'s holdings: buying a new position adds value but doesn\'t count as a gain. Excludes cash. Benchmarks are price return.'
       : 'Market value of today\'s holdings from each purchase date. Steps up where a new position was bought. Compared lines show the same starting amount invested in each benchmark.',
   };
@@ -52,7 +64,14 @@ function benchReturns(el, { tickers = ['SPY', 'QQQ', 'DIA'], periods = BENCH_PER
   // Start point for each period: the last recorded month at/before the target
   // date, but only if it's within 40 days of it. A gap in the record must
   // show "—", not quietly turn "1M" into a nine-month return.
-  const near = target => { const i = bisectDate(fs, target); return i >= 0 && dt.days(fs[i].d, target) <= 40 ? fs[i].d : null; };
+  // (If the month before is missing or left out as a typo, the month after
+  // is used instead when it's just as close; the cell's tooltip gives the date.)
+  const near = target => {
+    const i = bisectDate(fs, target);
+    const c = [fs[i], fs[i + 1]].filter(x => x && Math.abs(dt.days(x.d, target)) <= 40 && !x.live);
+    c.sort((a, b) => Math.abs(dt.days(a.d, target)) - Math.abs(dt.days(b.d, target)) || (a.d < b.d ? -1 : 1));
+    return c.length ? c[0].d : null;
+  };
   const win = p => p === null ? start : p === 'ytd' ? near(dt.addDays(end.slice(0, 4) + '-01-01', -1)) : near(dt.addMonths(end, -p));
   const froms = periods.map(([, p]) => win(p));
   const row = (name, series, primary, tk) => {
@@ -64,17 +83,19 @@ function benchReturns(el, { tickers = ['SPY', 'QQQ', 'DIA'], periods = BENCH_PER
       if (!series && S.histErr[tk]) return '<td class="muted">—</td>';
       if (!series) return `<td><span class="skel" style="display:inline-block;width:44px;height:12px"></span></td>`;
       if (!f || (p !== null && f < start)) return '<td class="muted">—</td>';
-      let r = periodReturn(series, f, end);
+      const r = periodReturn(series, f, end);
       if (r == null) return '<td class="muted">—</td>';
+      // Total return, plus the compounded rate per year for longer periods,
+      // so "5Y" can't be misread (+6.3% a year is +36% in total).
       const yrs = dt.days(f, end) / 365.25;
-      if (yrs > 1.05) r = annualize(r, f, end);
-      return `<td class="${signCls(r)} ${primary ? 'strong' : ''}">${fmt.pct(r, 1)}</td>`;
+      const py = yrs > 1.05 ? annualize(r, f, end) : null;
+      return `<td class="${signCls(r)} ${primary ? 'strong' : ''}" title="${p === null ? 'Since ' + dt.long(f) : 'From ' + dt.long(f)}">${fmt.pct(r, 1)}${py != null ? `<div class="ret-py">${fmt.pct(py, 1)}/yr</div>` : ''}</td>`;
     }).join('');
     return `<tr><td class="left"><span class="row" style="gap:8px">${primary ? `<span class="sq" style="background:var(--s1)"></span>` : '<span class="sq" style="background:var(--border-strong)"></span>'}<span class="${primary ? 'strong' : ''}">${esc(name)}</span>${staleEnd ? ` <span class="badge warn" title="The price source hasn't sent anything newer, so returns to today can't be measured yet">prices thru ${dt.short(staleEnd)}</span>` : ''}</span></td>${cells}</tr>`;
   };
   el.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th class="left">As of ${fs[fs.length - 1].live ? 'today (live)' : dt.long(end)}</th>${periods.map(([l, p]) => `<th title="${p === null ? 'Since inception (' + dt.monYr(start) + ')' : ''}">${l}</th>`).join('')}</tr></thead>
     <tbody>${row('Little Lion Fund', fs, true)}${tickers.map(t => row(benchName(t), priceSeries(t), false, t)).join('')}</tbody></table></div>
-    <div class="chart-foot">${icon('info')}<span>Periods longer than a year are annualized. Fund = month-end unit value, plus today's live value. Benchmarks = ETF price return on the same dates (dividends excluded).</span></div>`;
+    <div class="chart-foot">${icon('info')}<span>Total return over each period; under it, the same return per year (compounded) for periods over a year. Fund = month-end unit value, plus today's live value; it includes dividends. Benchmarks = ETF price only, on the same dates (dividends would add roughly 1.5–2% a year).${uvSpikes().length ? ` Left out as likely typos: ${uvSpikes().map(r => `${dt.monYr(r.d)} (${fmt.usd(r.u)})`).join(', ')}. <a href="#/unitvalue">Check on Unit Value</a>.` : ''}</span></div>`;
 }
 
 // ------------------------------------------------------------- Performance
@@ -91,8 +112,8 @@ VIEWS.performance = {
     </div>`;
     const card = chartCard($('#perf-chart'), {
       id: 'perf', title: 'Fund performance', titleIcon: 'chart-line', height: 420,
-      sources: PORTFOLIO_SOURCES, defaults: { range: '1Y', mode: 'pct', compare: ['SPY'], source: 'holdings' },
-      build: portfolioBuild, intraday: true,
+      sources: PORTFOLIO_SOURCES, defaults: { range: '5Y', mode: 'pct', compare: ['SPY'], source: 'fund' },
+      build: portfolioBuild, intraday: true, version: 3,
     });
     benchReturns($('#perf-bench'), { tickers: ['SPY', 'QQQ', 'DIA', 'IWM'] });
     const sortState = store.get('llf_perf_sort', 'weight');
@@ -152,7 +173,7 @@ VIEWS.stock = {
         </div>
         <div class="grid g-4" style="margin:18px 0 14px;gap:16px 24px">
           ${p ? stat('Shares', fmt.shares(p.sh)) + stat('Avg. cost', fmt.usd(p.ac)) + stat('Market value', fmt.usd(p.val)) + stat('Unrealized', `${fmt.usdSigned(p.pnl)} <small>(${fmt.pct(p.pnlPct)})</small>`, signCls(p.pnl))
-              + stat('Portfolio weight', fmt.pctPlain(p.weight, 2)) + stat('Held since', p.d ? dt.long(p.d) : '—') + stat('<span title="Total % gain ÷ years held (360-day years), as on the fund spreadsheet. In brackets: compounded per year, after a full year held">Annual %</span>', p.annual != null ? `${fmt.pct(p.annual, 1)}${p.cagr != null ? ` <small class="muted">(${fmt.pct(p.cagr, 1)} cmpd.)</small>` : ''}` : '—', signCls(p.annual)) + stat('1-year price change', p.ttm != null ? fmt.pct(p.ttm) : '—', signCls(p.ttm))
+              + stat('Portfolio weight', fmt.pctPlain(p.weight, 2)) + stat('Held since', p.since ? dt.long(p.since) : '—') + stat('<span title="Total % gain ÷ years held (360-day years), as on the fund spreadsheet. In brackets: compounded per year, after a full year held">Annual %</span>', p.annual != null ? `${fmt.pct(p.annual, 1)}${p.cagr != null ? ` <small class="muted">(${fmt.pct(p.cagr, 1)} cmpd.)</small>` : ''}` : '—', signCls(p.annual)) + stat('1-year price change', p.ttm != null ? fmt.pct(p.ttm) : '—', signCls(p.ttm))
             : stat('First bought', firstBuy ? dt.long(firstBuy) : '—') + stat('Last sold', sold[0] ? dt.long(sold[0].d) : '—') + stat('Realized gain', fmt.usdSigned(realizedT), signCls(realizedT)) + stat('Trades', trades.length)}
         </div>
         ${p && (p.vlSafety || p.vlTimeliness) ? `<div class="row wrap" style="margin-bottom:12px">${p.vlSafety ? `<span class="badge">${icon('shield', 'xs')}Value Line Safety ${p.vlSafety}</span>` : ''}${p.vlTimeliness ? `<span class="badge">${icon('clock', 'xs')}Value Line Timeliness ${p.vlTimeliness}</span>` : ''}</div>` : ''}

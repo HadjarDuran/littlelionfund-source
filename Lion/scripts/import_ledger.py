@@ -186,6 +186,13 @@ def main(path):
         if b_sh is not None and b_sh != 0:
             d = iso(row[B])
             est = False
+            if d is None and b_px is None and not b_fee:
+                # A running-total line without the word "Total" (no date, no
+                # price, shares = the lots above it). Counting it would
+                # double the position, as it did for MCK and LQDA.
+                warn(rn, f"{cur}: row with {b_sh} sh but no date or price looks like an unlabelled "
+                         "Total row — skipped (not a purchase)")
+                continue
             if d is None:
                 d = last_buy_date.get(cur)
                 est = True
@@ -257,16 +264,17 @@ def main(path):
     txns = []
     for b in buys:
         txns.append({"d": b["d"], "t": b["t"], "type": "buy", "sh": b["sh"], "px": b["px"],
-                     "amt": b["amt"], "fee": b["fee"], "memo": b["memo"], **({"est": True} if b["est"] else {})})
+                     "amt": b["amt"], "fee": b["fee"], "memo": b["memo"], "row": b["row"],
+                     **({"est": True} if b["est"] else {})})
     for (t, d, px), g in grouped.items():
         txns.append({"d": d, "t": t, "type": "sell", "sh": round(g["sh"], 4), "px": px,
                      "amt": round(g["amt"], 2), "basis": round(g["basis"], 2),
                      "gain": round(g["gain"], 2), "st": round(g["st"], 2), "lt": round(g["lt"], 2),
-                     "fee": round(g["fee"], 2) or None, "lots": g["lots"],
+                     "fee": round(g["fee"], 2) or None, "lots": g["lots"], "rows": g["rows"],
                      **({"noPx": True, "px": None, "amt": None, "gain": None, "basis": None, "st": None, "lt": None}
                         if g.get("nopx") else {})})
     for e in events:
-        e = {k: v for k, v in e.items() if k != "row" and v is not None}
+        e = {k: v for k, v in e.items() if v is not None}
         txns.append(e)
     txns.sort(key=lambda x: (x.get("d") or "", x.get("t") or "", {"buy": 0, "sell": 1}.get(x["type"], 2)))
     for i, t in enumerate(txns):

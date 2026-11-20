@@ -1,4 +1,5 @@
 import { kv } from '../lib/kv.js';
+import { valueHoldings } from '../lib/navValue.js';
 
 const DEFAULT_UNITS = 4111.03;
 
@@ -51,13 +52,11 @@ export async function runNavSnapshot(env) {
 
     // Sequential, not parallel — keeps this well inside a free-tier
     // Finnhub key's rate limit even as the holdings list grows.
-    let equity = 0;
-    const missing = [];
-    for (const h of HOLD) {
-      const price = await fetchQuote(h.t, finnhubKey);
-      if (price == null) { missing.push(h.t); continue; }
-      equity += price * h.sh;
-    }
+    const quotes = {};
+    for (const h of HOLD) quotes[h.t] = await fetchQuote(h.t, finnhubKey);
+    const today = new Date().toISOString().split('T')[0];
+    const lastPx = (await client.get('nav_last_prices')) || {};
+    const { equity, missing, stale, unpriced, last } = valueHoldings(HOLD, quotes, lastPx, today);
     if (HOLD.length > 0 && missing.length === HOLD.length) {
       console.error('NAV snapshot: all quote lookups failed — skipped writing a snapshot rather than recording a wrong number', missing);
       return;
@@ -67,17 +66,23 @@ export async function runNavSnapshot(env) {
     const unitValue = +(totalEquity / units).toFixed(4);
     const spy = await fetchQuote('SPY', finnhubKey);
 
-    const today = new Date().toISOString().split('T')[0];
     const nav = (await client.get('nav_daily')) || [];
-    const entry = { date: today, unitValue, totalEquity: +totalEquity.toFixed(2), spy, missingQuotes: missing };
+    // missingQuotes: no quote today. stalePrices: of those, valued at their
+    // last good price. unpriced: no price at all (left out of the total).
+    const entry = { date: today, unitValue, totalEquity: +totalEquity.toFixed(2), spy, missingQuotes: missing,
+      ...(stale.length ? { stalePrices: stale } : {}), ...(unpriced.length ? { unpriced } : {}) };
     const idx = nav.findIndex(r => r.date === today);
     if (idx >= 0) nav[idx] = entry; else nav.push(entry);
     await client.set('nav_daily', nav);
+    await client.set('nav_last_prices', last);
     console.log('NAV snapshot written:', JSON.stringify(entry));
 
     const now = new Date();
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const monthKey = `${monthEnd.getMonth() + 1}/${monthEnd.getDate()}/${monthEnd.getFullYear()}`;
+    // A position with no price at all would understate the month's value;
+    // leave the month row alone that day rather than write a wrong number.
+    if (unpriced.length) { console.error('Unit value month row not updated: no price for', unpriced); return; }
     const unitvalue = (await client.get('unitvalue')) || [];
     const uvIdx = unitvalue.findIndex(r => r.d === monthKey);
     if (uvIdx >= 0) unitvalue[uvIdx] = { ...unitvalue[uvIdx], u: unitValue };

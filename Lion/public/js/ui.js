@@ -283,7 +283,7 @@ const MAX_COMPARE = 4;
 function chartCard(host, opts) {
   // v2: defaults changed (Nov 2026: comparisons off except on the fund charts), so
   // earlier saved chart settings are left behind once.
-  const key = 'llf_chart_v2_' + opts.id;
+  const key = 'llf_chart_v' + (opts.version || 2) + '_' + opts.id;
   const saved = store.get(key, {});
   const st = {
     range: '1Y', mode: 'pct', scale: 'linear', yMode: 'auto', yMin: null, yMax: null, compare: [], source: null, table: false, custom: null,
@@ -365,7 +365,8 @@ function chartCard(host, opts) {
       const b = l.querySelector('button');
       if (b) b.onclick = () => { st.compare = st.compare.filter(t => t !== s.key); save(); draw(false); };
     });
-    $c('.cc-note').textContent = out.note || '';
+    // A build can flag its note as a caveat (e.g. the what-if holdings line).
+    $c('.cc-note').innerHTML = (out.warn ? `<span class="badge warn" style="margin-right:6px">${icon('triangle-alert', 'xs')}${esc(out.warn)}</span>` : '') + esc(out.note || '');
 
     const cfg = {
       series, mode: st.mode, scale: st.scale, yMode: st.yMode, yMin: st.yMin, yMax: st.yMax,

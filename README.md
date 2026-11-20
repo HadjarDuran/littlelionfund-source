@@ -63,13 +63,14 @@ This reads and writes the live data.
 | Performance | `#/performance` | Everyone: big chart with all controls, returns vs benchmarks, holdings grid |
 | Stock detail | `#/stock/TICKER` | Everyone: price chart with the fund's buy/sell markers, position stats, full trade history. Works for past holdings too |
 | Sectors | `#/sectors`, `#/sectors/Name` | Everyone: each sector vs its SPDR sector ETF and vs target weight |
-| Sector debrief | `#/debrief/<sector>/<ticker>` | Everyone. Built for the morning meeting: step through each stock in a sector (↑/↓) while the whole sector stays on screen, weighted by value (weight now vs. target vs. S&P, $ to rebalance, returns vs. the sector ETF, a composition bar sized by each stock's share). ←/→ change sector; "Present" goes full screen |
+| Sector debrief | `#/debrief/<sector>/<ticker>` | Everyone. Built for the morning meeting. **One at a time**: step through each stock in a sector (↑/↓) while the whole sector stays on screen, weighted by value (weight now vs. target vs. S&P, $ to rebalance, returns vs. the sector ETF, a composition bar sized by each stock's share). **Whole sector (draft)**: the sector's line plus a small chart for every holding on one page. ←/→ change sector; "Present" goes full screen |
 | Activity | `#/activity` | Everyone: every trade since 2012, realized gains by year, past holdings, data-quality notes |
 | Holdings | `#/holdings` | Managers (password): Add transaction, edit positions, cash and units |
-| Weightings | `#/weightings` | Everyone can view sector targets vs actual vs S&P, with $ to rebalance. Editing needs the weightings password |
+| Weightings | `#/weightings` | Everyone can view sector targets vs actual vs S&P, with $ to rebalance. Editing needs the weightings password. A target can be blank; "Clear all targets" blanks them all, and the site then shows actual vs. S&P only |
+| Data | `#/data` | Everyone: the raw numbers behind every chart (unit value record, daily snapshots, every trade with its Master File row, holdings vs. trade history, data checks), each downloadable as CSV. Read-only |
 | Unit Value | `#/unitvalue` | Everyone can view the official month-end unit value record (flags missing months and likely typos). Adding or correcting months needs the holdings password |
 
-Keyboard: `⌘K` or `/` search, `1`–`8` switch pages, `[` collapse the nav. On Sector debrief: `↑`/`↓` (or `K`/`J`) stocks, `←`/`→` sectors.
+Keyboard: `⌘K` or `/` search, `1`–`9` switch pages, `[` collapse the nav. On Sector debrief: `↑`/`↓` (or `K`/`J`) stocks, `←`/`→` sectors.
 
 Read-only mode is only the visible part of the protection: every write route in `Lion/src/routes/` checks the password token on the server, so nothing can be changed without the password even by calling the API directly.
 
@@ -117,13 +118,24 @@ was also recorded in the app, delete the app copy from the Holdings page.
 
 ## How the numbers work (worth knowing before changing them)
 
-- **Fund performance, long term** = the hand-recorded month-end unit value
+- **Fund performance** = the hand-recorded month-end unit value
   (`/api/unitvalue`). It's the only series that includes cash, fees and every
-  past holding, so it's what the returns table and "Since 2012" use.
+  past holding, so it's what the returns table, "Since 2012" and every
+  performance chart use by default. A month that jumps more than 10% and
+  comes straight back (Oct 2025, $67.88) is treated as a likely typo: left
+  out of returns and charts, and flagged on Unit Value and Data until fixed.
+- **Returns table** shows the total return for each period and, for periods
+  over a year, the compounded rate per year under it.
+- **"Today's holdings (what-if)"** re-prices the current portfolio back in
+  time. Over long ranges it's hindsight (everything sold along the way, and
+  the cash, is left out), so it's labelled as a what-if and warns past a year.
+  See `docs/numbers-review-2026-11.md`.
 - **Holdings line, %** = time-weighted return of *today's* holdings: a new
   purchase adds value but not "performance", so the line doesn't jump when
   cash is invested. **Holdings line, $** = market value of today's holdings
-  from each purchase date. That one does step up at purchases, and it says so.
+  from each purchase date. "Purchase date" = when the current position was
+  bought according to the trade history (MCK: Mar 2026, after a sale in
+  Feb), used only when the trade history's share count agrees with Holdings. That one does step up at purchases, and it says so.
 - **Benchmarks** are ETFs (SPY, QQQ, DIA, IWM, VTI, sector SPDRs), price
   return only (no dividends). In $ mode they're rebased to the fund's starting
   value; in % mode everything starts at 0%. One y-axis, always.
@@ -133,8 +145,10 @@ was also recorded in the app, delete the app copy from the Holdings page.
   simple average, not compounded; the stock page shows the compounded rate
   next to it. Weightings' "Target $" and "To rebalance" are the sheet's
   "Proposed $" and "Change $".
-- **Returns-table annualizing** (periods over a year) is compounded, so the
-  fund and the benchmarks are measured the same way.
+- **Past holdings** = tickers the trade history shows being sold. A ticker
+  bought, never sold and missing from Holdings is a data check, not a sale.
+- **Daily snapshot**: if a quote fails, the stock is valued at its last good
+  price (`nav_last_prices` in Redis), never $0.
 - **"Since 2012"** compares today's live unit value with the first recorded
   month (May 2012). The ROI tab in the spreadsheet uses a different method
   (gain ÷ weighted invested capital ÷ years), so its "annualized" figure is

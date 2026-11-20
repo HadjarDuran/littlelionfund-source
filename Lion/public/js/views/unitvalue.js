@@ -21,8 +21,9 @@ VIEWS.unitvalue = {
     const missing = [];
     if (latest) { let m = nextMonthEnd(latest.iso); while (m < dt.today()) { missing.push(m); m = nextMonthEnd(m); } }
     // A month that jumps >10% and reverses >10% the next month is probably a typo.
-    const spikes = new Set();
-    rows.forEach((r, k) => { const a = rows[k - 1], b = rows[k + 1]; if (a && b) { const up = r.u / a.u - 1, back = b.u / r.u - 1; if (Math.abs(up) > 0.1 && Math.abs(back) > 0.1 && Math.sign(up) !== Math.sign(back)) spikes.add(r.i); } });
+    // Likely typos (see uvSpikes in data.js): flagged here, left out of returns.
+    const spikeD = new Set(uvSpikes().map(r => r.d));
+    const spikes = new Set(rows.filter(r => spikeD.has(r.iso)).map(r => r.i));
 
     el.innerHTML = `<div class="view stack">
       <div class="grid g-4 stagger">
@@ -59,7 +60,7 @@ VIEWS.unitvalue = {
           const mc = p ? (r.u / p.u - 1) * 100 : null;
           const yearBreak = p && p.iso.slice(0, 4) !== r.iso.slice(0, 4);
           return `<tr class="${edit ? 'click' : ''}" data-i="${r.i}" style="${yearBreak ? 'box-shadow:inset 0 -2px 0 var(--border-strong)' : ''}${editIdx === r.i ? ';background:var(--accent-soft)' : ''}">
-            <td class="left muted">${dt.long(r.iso)}${spikes.has(r.i) ? ' <span class="badge warn" title="Jumps more than 10% and reverses the next month. Worth checking this entry for a typo.">check</span>' : ''}</td><td class="strong">${fmt.usd(r.u)}</td>
+            <td class="left muted">${dt.long(r.iso)}${spikes.has(r.i) ? ' <span class="badge warn" title="Jumps more than 10% and reverses the next month, so it is probably a typo. It is left out of returns and charts until it is corrected.">likely typo · not used</span>' : ''}</td><td class="strong">${fmt.usd(r.u)}</td>
             <td class="${signCls(mc)}">${mc != null ? fmt.pct(mc) : '—'}</td><td class="${signCls(r.u - first.u)}">${fmt.pct((r.u / first.u - 1) * 100, 1)}</td>
             <td class="muted">${r.sp ? r.sp.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}</td>
             ${edit ? `<td><button class="icon-btn" data-del="${r.i}" aria-label="Delete ${dt.long(r.iso)}">${icon('trash-2', 'sm')}</button></td>` : ''}</tr>`;

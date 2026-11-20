@@ -50,7 +50,7 @@ VIEWS.dashboard = {
 
     const card = chartCard($('#dash-chart'), {
       id: 'dash', title: 'Performance', titleIcon: 'chart-line', height: 300,
-      sources: PORTFOLIO_SOURCES, defaults: { range: '1Y', mode: 'pct', compare: ['SPY'], source: 'holdings' },
+      sources: PORTFOLIO_SOURCES, defaults: { range: '1Y', mode: 'pct', compare: ['SPY'], source: 'fund' }, version: 3,
       build: portfolioBuild, intraday: true,
     });
     benchReturns($('#dash-bench'), { tickers: ['SPY', 'QQQ'], periods: BENCH_PERIODS.filter(p => p[0] !== '1M') });
@@ -118,7 +118,7 @@ function drawAlloc() {
   $('#alloc-seg').innerHTML = seg('aview', [['sector', 'Sectors'], ['stock', 'Stocks']], allocView);
   onSeg(document, 'aview', v => { allocView = v; store.set('llf_alloc_view', v); drawAlloc(); });
   const t = totals();
-  const targets = Object.fromEntries((S.weightings || []).map(w => [w.s, +w.p]));
+  const targets = Object.fromEntries((S.weightings || []).filter(w => targetOf(w) != null).map(w => [w.s, targetOf(w)]));
   let slices;
   if (allocView === 'sector') {
     slices = bySector().map(g => ({ name: g.s, value: g.val, color: sectorColor(g.s), target: targets[g.s] }));

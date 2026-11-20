@@ -864,3 +864,29 @@ td.flash-up, td.flash-down { border-radius: 6px }
   .db-steps { width: 100%; justify-content: flex-end }
   .db-bar { padding: 8px }
 }
+
+/* Returns table: per-year rate under the total */
+.ret-py { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 1px }
+
+/* Sector debrief, "Whole sector" layout (draft) */
+.db-multi { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; padding-top: 6px }
+.db-mcard { border: 1px solid var(--border); border-radius: 14px; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; background: var(--surface);
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast), border-color var(--t-fast) }
+.db-mcard:hover, .db-mcard:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow-2, 0 6px 20px rgba(0,0,0,.08)); border-color: var(--border-strong); outline: none }
+.db-mcard.flash { animation: dbFlash 1.2s var(--ease-out) }
+@keyframes dbFlash { 0%, 40% { box-shadow: 0 0 0 3px var(--accent) } 100% { box-shadow: 0 0 0 0 transparent } }
+.db-mchart { margin: 0 -9px }
+.db-mfoot { gap: 10px; font-size: 12px }
+@media (max-width: 760px) {
+  .db-bar { flex-wrap: wrap; row-gap: 8px }
+  .db-bar .db-sectors { flex: 1 1 0 }
+  #db-layout { order: 10; flex: 1 1 100% }
+  #db-layout .seg { width: 100% }
+  #db-layout .seg button { flex: 1 }
+  #db-present { display: none }
+}
+@media (max-width: 760px) {
+  .how-t thead { display: none }
+  .how-t tr { display: block; padding: 12px 20px; border-bottom: 1px solid var(--border) }
+  .how-t td { display: block; border: 0 !important; padding: 2px 0 !important; min-width: 0 !important }
+}
