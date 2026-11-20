@@ -137,8 +137,21 @@ was also recorded in the app, delete the app copy from the Holdings page.
   bought according to the trade history (MCK: Mar 2026, after a sale in
   Feb), used only when the trade history's share count agrees with Holdings. That one does step up at purchases, and it says so.
 - **Benchmarks** are ETFs (SPY, QQQ, DIA, IWM, VTI, sector SPDRs), price
-  return only (no dividends). In $ mode they're rebased to the fund's starting
-  value; in % mode everything starts at 0%. One y-axis, always.
+  return only (no dividends), always drawn from their own daily closes, never
+  resampled onto the main line's dates. In $ mode they're rebased to the main
+  line's starting value; in % mode everything starts at 0%. One y-axis, always.
+- **Every compared line starts on the main line's first date**, from its own
+  close on that date (or the last close before it, never after):
+  `alignSeries()` in `chart.js`. The chart, the legend %, the table and
+  drag-to-measure all use that same window. Tooltips and measuring read each
+  line's value on that date or the last one before it, never a later one.
+- **Monthly windows** start on the recorded month-end nearest the range start
+  (`nearestPoint()`), in both the unit value chart and the returns table.
+- **Gaps in the data** (a step much longer than the series' usual spacing,
+  e.g. months with no unit value recorded) are drawn as a faint dashed line and
+  named under the chart, so a straight line never stands in for missing data.
+- The chart and series maths is unit-tested against hand-computed answers
+  (`Lion/test/chartMath.test.js`, which runs the real browser files).
 - **Matches the live spreadsheet.** Portfolio weight = market value ÷
   invested total (cash excluded). "Annual %" = total % gain ÷ (days held ÷
   360), the formula behind the sheet's "Annual % Gain or Loss" column. It's a

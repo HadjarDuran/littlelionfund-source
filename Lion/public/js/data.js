@@ -570,6 +570,17 @@ function periodReturn(series, from, to) {
   if (i >= j) return null;
   return (series[j].v / series[i].v - 1) * 100;
 }
+// For a monthly record: the recorded date closest to `target` (either side,
+// within `maxDays`), so a window starts on the month-end nearest its start
+// instead of reaching back a month or more. Ties go to the earlier date.
+// The returns table and the unit value chart both use this.
+function nearestPoint(series, target, maxDays = 40) {
+  if (!series || !series.length || !target) return null;
+  const i = bisectDate(series, target);
+  const c = [series[i], series[i + 1]].filter(x => x && !x.live && Math.abs(dt.days(x.d, target)) <= maxDays);
+  c.sort((a, b) => Math.abs(dt.days(a.d, target)) - Math.abs(dt.days(b.d, target)) || (a.d < b.d ? -1 : 1));
+  return c.length ? c[0].d : null;
+}
 function annualize(pct, from, to) {
   const yrs = dt.days(from, to) / 365.25;
   if (pct == null || yrs < 1) return pct;

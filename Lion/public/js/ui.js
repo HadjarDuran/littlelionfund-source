@@ -332,7 +332,9 @@ function chartCard(host, opts) {
     const c = ctx();
     const out = opts.build(c) || {};
     last = { ...out, ctx: c };
-    const series = (out.series || []).map((s, i) => ({ ...s, color: s.color || SERIES_COLORS[i % SERIES_COLORS.length] }));
+    // Line compared series up with the main one first, so the chart, the
+    // legend returns, the table and measuring all use the same window.
+    const series = alignSeries((out.series || []).map((s, i) => ({ ...s, color: s.color || SERIES_COLORS[i % SERIES_COLORS.length] })));
     // controls
     const rangeList = [...(opts.intraday ? ['1D', '1W'] : []), ...(opts.ranges || RANGES)];
     $c('.cc-ranges').innerHTML = seg('range', rangeList.map(r => [r, r === 'MAX' ? 'Max' : r, RANGE_LABEL[r]]), st.range);
@@ -355,9 +357,9 @@ function chartCard(host, opts) {
     $c('.cc-legend').innerHTML = series.filter(s => s.points && s.points.length > 1).map((s, i) => {
       const r = (s.points[s.points.length - 1].v / s.points[0].v - 1) * 100;
       const end = s.points[s.points.length - 1].d;
-      const short = !s.primary && mainEnd && dt.days(end, mainEnd) > 5;
+      const short = !s.primary && mainEnd && dt.days(end, mainEnd) > 5 && !isTs(end);
       return `<span class="lg" data-k="${esc(s.key)}"><span class="key ${s.dashed ? 'dash' : ''}" style="background:${s.color};color:${s.color}"></span><span class="nm"></span>
-        <span class="v ${signCls(r)}">${fmt.pct(r)}</span>${short ? `<span class="badge warn" title="The price source hasn't sent anything newer. The return shown is up to this date.">thru ${dt.short(end)}</span>` : ''}${s.removable ? `<button aria-label="Remove">${icon('x', 'xs')}</button>` : ''}</span>`;
+        <span class="v ${signCls(r)}">${fmt.pct(r)}</span>${short ? `<span class="badge warn" title="The price source hasn't sent anything newer. The return shown is up to this date.">thru ${dt.short(end)}</span>` : ''}${s.lateStart && !s.primary ? `<span class="badge warn" title="No prices this far back, so this line starts later than the main one and its return covers a shorter period">from ${isTs(s.lateStart) ? dt.short(s.lateStart) : dt.monYr(s.lateStart)}</span>` : ''}${s.removable ? `<button aria-label="Remove">${icon('x', 'xs')}</button>` : ''}</span>`;
     }).join('') + (out.legendExtra || '');
     $$('.cc-legend .lg', host).forEach(l => {
       const s = series.find(x => x.key === l.dataset.k);
@@ -527,11 +529,14 @@ function intradayBuild(list, ctx, name, color, extra = []) {
 // Compare series built from the card's ctx: rebased & windowed like the main one.
 const FIXED_COLORS = { SPY: 'var(--s2)', QQQ: 'var(--s3)', DIA: 'var(--s4)', IWM: 'var(--s5)', VTI: 'var(--s6)' };
 function compareColor(t, k) { return FIXED_COLORS[t] || ['var(--s6)', 'var(--s5)', 'var(--s4)', 'var(--s3)'][k % 4]; }
-function compareSeries(ctx, from, to, sampleDates) {
+// Always the benchmark's full daily closes over the window: it's its own line,
+// not resampled onto the main series' dates (that made a benchmark copy the
+// shape and the gaps of a monthly series). alignSeries() then starts it on
+// the main series' first date.
+function compareSeries(ctx, from, to) {
   return ctx.compare.map((t, k) => {
-    let pts = priceSeries(t);
+    const pts = priceSeries(t);
     if (!pts) return { key: t, name: benchName(t), points: [], removable: true, color: compareColor(t, k) };
-    if (sampleDates) pts = sampleDates.map(d => { const i = bisectDate(pts, d); return i >= 0 ? { d, v: pts[i].v } : null; }).filter(Boolean);
     return { key: t, name: benchName(t), points: sliceSeries(pts, from, to), removable: true, color: compareColor(t, k) };
   });
 }

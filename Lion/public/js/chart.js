@@ -14,14 +14,66 @@
 //   refLine: { v, label }   dashed reference line in $ (e.g. previous close)
 // }
 //
-// One y-axis only. When comparing series in 'value' mode, every non-primary
-// series is rebased to start at the primary's first value ("what the same
-// money would have done"); in 'pct' mode all series start at 0%.
+// One y-axis only. Every compared series is first lined up with the primary
+// (alignSeries): it starts on the primary's first date, from its own value on
+// that date. In 'value' mode it's then rebased to start at the primary's first
+// value ("what the same money would have done"); in 'pct' mode all series
+// start at 0%. So every line measures exactly the same window.
 // The x-axis is real calendar time, so gaps (weekends, a monthly series next
 // to a daily one) are drawn to scale.
 // ---------------------------------------------------------------------------
 
 const SVGNS = 'http://www.w3.org/2000/svg';
+
+// Line every compared series up with the primary series' first date, so all
+// lines measure the same window. A compared series' starting value is its
+// last value at or before that date (never a later one); its earlier points
+// are dropped. If it has no value within ~6 weeks before the primary starts
+// (its history begins later, or stopped long before), it keeps its own first
+// point and is flagged `lateStart`. Idempotent; never changes the primary.
+const ALIGN_MAX_GAP_DAYS = 45;
+function alignSeries(series) {
+  const valid = (series || []).filter(s => s.points && s.points.length);
+  const primary = valid.find(s => s.primary) || valid[0];
+  if (!primary) return series || [];
+  const d0 = primary.points[0].d;
+  return series.map(s => {
+    if (s === primary || !s.points || !s.points.length) return s;
+    const i = bisectDate(s.points, d0);
+    if (i < 0 || dt.days(s.points[i].d, d0) > ALIGN_MAX_GAP_DAYS) {
+      return { ...s, points: i < 0 ? s.points : s.points.slice(i + 1), lateStart: (i < 0 ? s.points[0] : s.points[i + 1] || {}).d || null };
+    }
+    if (s.points[i].d === d0) return i === 0 ? s : { ...s, points: s.points.slice(i) };
+    return { ...s, points: [{ d: d0, v: s.points[i].v, from: s.points[i].d }, ...s.points.slice(i + 1)] };
+  });
+}
+
+// Where a series has no data: a step much longer than its usual spacing
+// (more than 2.5× its median step and over 5 days; for a monthly record that
+// means a month or more missing). Returns the indexes i where pts[i-1]→pts[i]
+// is a gap. Those steps are drawn as a faint dashed line, not a solid one, so
+// a straight line across missing months never looks like real data.
+function seriesGaps(pts) {
+  if (!pts || pts.length < 3) return [];
+  const steps = [];
+  for (let i = 1; i < pts.length; i++) steps.push(pts[i].t - pts[i - 1].t);
+  const med = [...steps].sort((a, b) => a - b)[Math.floor(steps.length / 2)];
+  const lim = Math.max(med * 2.5, 5 * 864e5);
+  const out = [];
+  steps.forEach((s, k) => { if (s > lim) out.push(k + 1); });
+  return out;
+}
+
+// Value of a series at time t (ms): its last point at or before t, or null if
+// it hadn't started yet or had already ended more than `stale` ms earlier.
+// Used for tooltips and measuring, so a value from a LATER date is never shown.
+function valueAt(pts, t, stale = 6 * 864e5) {
+  if (!pts.length || t < pts[0].t) return null;
+  let lo = 0, hi = pts.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (pts[m].t <= t) lo = m; else hi = m - 1; }
+  if (lo === pts.length - 1 && t - pts[lo].t > stale) return null;
+  return pts[lo];
+}
 const ms = d => (d.length > 10 ? Date.parse(d) : Date.parse(d + 'T00:00:00Z'));
 
 function niceStep(range, target) {
@@ -112,7 +164,7 @@ function lineChart(el, cfg) {
     st.w = W;
     const H = c.height || 320;
     const fmtV = c.fmt || fmt.usdCompact;
-    const valid = (c.series || []).filter(s => s.points && s.points.length >= 2);
+    const valid = alignSeries((c.series || []).filter(s => s.points && s.points.length)).filter(s => s.points && s.points.length >= 2);
     if (!valid.length) {
       el.innerHTML = `<div class="chart-empty" style="height:${H}px">${c.emptyText || 'No chart data yet'}</div>`;
       el.append(tip, mtip);
@@ -184,7 +236,9 @@ function lineChart(el, cfg) {
       series.forEach(s => { if (!s.primary) s.pts = s.pts.filter(p => p.t >= t0 && p.t <= t1); });
     }
     const yp = y => PT + (1 - (y - lo) / (hi - lo)) * CH;
-    st.geom = { PL, PR, PT, PB, CW, CH, W, H, t0, t1, xp, xInv, yp, fwd, inv, lo, hi, series, primary: series.find(s => s.primary) || series[0], pct, fmtV };
+    // How far past its last point a series may be read (intraday: 30 min).
+    const stale = c.xIndex ? 30 * 60e3 : 6 * 864e5;
+    st.geom = { PL, PR, PT, PB, CW, CH, W, H, t0, t1, xp, xInv, yp, fwd, inv, lo, hi, series, primary: series.find(s => s.primary) || series[0], pct, fmtV, stale };
 
     // y ticks
     const yticks = [];
@@ -231,7 +285,13 @@ function lineChart(el, cfg) {
     for (const s of ordered) {
       const raw = s.pts.map(p => ({ t: p.t, x: xp(p.t), y: yp(fwd(p.disp)) }));
       const pts = downsample(raw, CW);
-      const dpath = 'M' + pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join('L');
+      // gaps in the data (index mode squeezes nights/weekends out, so none there)
+      const gaps = TS ? [] : seriesGaps(pts);
+      const gapSet = new Set(gaps);
+      const P = p => p.x.toFixed(1) + ',' + p.y.toFixed(1);
+      const dpath = 'M' + pts.map(P).join('L');
+      const solid = gaps.length ? pts.map((p, i) => (i === 0 || gapSet.has(i) ? 'M' : 'L') + P(p)).join('') : dpath;
+      const gapPath = gaps.map(i => `M${P(pts[i - 1])}L${P(pts[i])}`).join('');
       if (s.primary && c.area !== false && !compact) {
         defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${s.color}" stop-opacity=".20"/><stop offset="100%" stop-color="${s.color}" stop-opacity="0"/></linearGradient>`;
         lines += `<path class="${animate ? 'chart-area' : ''}" d="${dpath}L${pts[pts.length - 1].x.toFixed(1)},${PT + CH}L${pts[0].x.toFixed(1)},${PT + CH}Z" fill="url(#${gid})"/>`;
@@ -240,8 +300,9 @@ function lineChart(el, cfg) {
         lines += `<path d="${dpath}L${pts[pts.length - 1].x.toFixed(1)},${PT + CH + PB}L${pts[0].x.toFixed(1)},${PT + CH + PB}Z" fill="url(#${gid})"/>`;
       }
       lines += s.dashed
-        ? `<path class="chart-line" d="${dpath}" stroke="${s.color}" stroke-dasharray="5 4" ${animate ? 'style="opacity:0;animation:fadeIn .6s .2s forwards"' : ''}/>`
-        : `<path class="chart-line ${s.primary ? 'primary' : ''} ${animate ? 'draw' : ''}" pathLength="1" d="${dpath}" stroke="${s.color}"/>`;
+        ? `<path class="chart-line" d="${solid}" stroke="${s.color}" stroke-dasharray="5 4" ${animate ? 'style="opacity:0;animation:fadeIn .6s .2s forwards"' : ''}/>`
+        : `<path class="chart-line ${s.primary ? 'primary' : ''} ${animate ? 'draw' : ''}" pathLength="1" d="${solid}" stroke="${s.color}"/>`;
+      if (gapPath) lines += `<path class="chart-line chart-gap" d="${gapPath}" stroke="${s.color}" stroke-dasharray="2 5" opacity=".55"><title>No data recorded for this stretch</title></path>`;
       // end dot
       const last = pts[pts.length - 1];
       lines += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="${s.primary ? 3.5 : 2.5}" fill="${s.color}" stroke="var(--surface)" stroke-width="1.5" ${animate ? 'style="opacity:0;animation:fadeIn .3s .8s forwards"' : ''}/>`;
@@ -322,10 +383,12 @@ function lineChart(el, cfg) {
     const x = G.xp(pt.t);
     const hair = el.querySelector('.chart-hair');
     hair.setAttribute('x1', x); hair.setAttribute('x2', x); hair.setAttribute('opacity', 1);
+    // Compared series: the value on that date (or the last one before it),
+    // never a later one; left out if the series doesn't cover that date.
     const rows = G.series.map(s => {
-      const j = idxAt(s, pt.t); const p = s.pts[j];
-      return { s, p, x: G.xp(p.t), y: G.yp(G.fwd(p.disp)) };
-    });
+      const p = s === pr ? pt : valueAt(s.pts, pt.t, G.stale);
+      return p ? { s, p, x: G.xp(p.t), y: G.yp(G.fwd(p.disp)) } : null;
+    }).filter(Boolean);
     el.querySelector('.dots').innerHTML = rows.map(r => `<circle class="chart-dot" cx="${r.x.toFixed(1)}" cy="${r.y.toFixed(1)}" r="${r.s.primary ? 5 : 4}" fill="${r.s.color}"/>`).join('');
     const sorted = [...rows].sort((a, b) => b.p.disp - a.p.disp);
     let html = `<div class="tip-date">${dt.long(pt.d)}</div>`;
@@ -364,10 +427,11 @@ function lineChart(el, cfg) {
     $$('.chart-band-edge', el).forEach((l, k) => { const x = k ? xb : xa; l.setAttribute('x1', x); l.setAttribute('x2', x); l.setAttribute('opacity', ia === ib ? 0 : 1); });
     if (ia === ib) { mtip.hidden = true; return; }
     const lines = G.series.map(s => {
-      const pa = s.pts[idxAt(s, a.t)], pb = s.pts[idxAt(s, b.t)];
+      const pa = s === pr ? a : valueAt(s.pts, a.t, G.stale), pb = s === pr ? b : valueAt(s.pts, b.t, G.stale);
+      if (!pa || !pb) return null;
       const r = (pb.v / pa.v - 1) * 100;
       return { s, r, abs: pb.v - pa.v };
-    });
+    }).filter(Boolean);
     const main = lines.find(l => l.s === pr);
     let html = `<span class="${''}">${!G.pct && !pr.rebased && G.series.length === 1 ? fmt.usdSigned(main.abs) + ' · ' : ''}${fmt.pct(main.r)}</span>`;
     if (lines.length > 1) html += '<small>' + lines.filter(l => l !== main).map(l => `${esc(l.s.name)} ${fmt.pct(l.r)}`).join(' · ') + '</small>';

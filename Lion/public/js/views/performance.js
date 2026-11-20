@@ -26,13 +26,19 @@ function portfolioBuild(ctx) {
     const base = fundSeries();
     if (base.length < 2) return { series: [], empty: 'No unit value history recorded yet' };
     const end = ctx.to || base[base.length - 1].d;
-    const from = ctx.from || rangeStart(ctx.range, end);
+    const want = ctx.from || rangeStart(ctx.range, end);
+    // Start on the recorded month-end nearest the range start (same rule as
+    // the returns table), not up to a month or more before it.
+    const from = want ? (nearestPoint(base, want) || want) : null;
     const pts = sliceSeries(base, from, ctx.to);
-    const dates = pts.map(p => p.d);
+    // Name any stretch with no month-end recorded (drawn dashed on the chart).
+    const holes = [];
+    for (let i = 1; i < pts.length; i++) if (dt.days(pts[i - 1].d, pts[i].d) > 45) holes.push(`${dt.monYr(dt.addDays(pts[i - 1].d, 1))} – ${dt.monYr(dt.addMonths(pts[i].d, -1))}`);
     return {
-      series: [{ key: 'fund', name: 'LLF unit value', points: pts, primary: true }, ...compareSeries(ctx, from, ctx.to, dates)],
+      warn: holes.length ? `No unit value recorded ${holes.join(', ')}` : null,
+      series: [{ key: 'fund', name: 'LLF unit value', points: pts, primary: true }, ...compareSeries(ctx, from, ctx.to)],
       fmt: v => '$' + v.toFixed(v < 100 ? 2 : 0),
-      note: 'Month-end unit value as recorded by the fund (includes cash and every past holding). Benchmarks are sampled on the same dates, price return only.',
+      note: 'Month-end unit value as recorded by the fund (includes cash and every past holding), so its line only bends once a month. Benchmarks are daily closes from the same starting date, price return only.',
     };
   }
   const pos = positions().filter(p => histOf(p.t));
@@ -66,12 +72,7 @@ function benchReturns(el, { tickers = ['SPY', 'QQQ', 'DIA'], periods = BENCH_PER
   // show "—", not quietly turn "1M" into a nine-month return.
   // (If the month before is missing or left out as a typo, the month after
   // is used instead when it's just as close; the cell's tooltip gives the date.)
-  const near = target => {
-    const i = bisectDate(fs, target);
-    const c = [fs[i], fs[i + 1]].filter(x => x && Math.abs(dt.days(x.d, target)) <= 40 && !x.live);
-    c.sort((a, b) => Math.abs(dt.days(a.d, target)) - Math.abs(dt.days(b.d, target)) || (a.d < b.d ? -1 : 1));
-    return c.length ? c[0].d : null;
-  };
+  const near = target => nearestPoint(fs, target);
   const win = p => p === null ? start : p === 'ytd' ? near(dt.addDays(end.slice(0, 4) + '-01-01', -1)) : near(dt.addMonths(end, -p));
   const froms = periods.map(([, p]) => win(p));
   const row = (name, series, primary, tk) => {
@@ -153,7 +154,9 @@ VIEWS.stock = {
     const trades = txnsFor(t);
     if (!p && !trades.length) { el.innerHTML = `<div class="view card empty">${icon('search')}<div>No holding or trade history for ${esc(t)}.</div></div>`; return; }
     if (!histOf(t) && !S.histErr[TICKER_ALIASES[t] || t]) getHist(t).then(h => { if (h && route.view === 'stock' && route.params[0] === t) render({ quiet: true }); });
-    const firstBuy = [...trades].reverse().find(x => x.type === 'buy')?.d || p?.d;
+    // "Since bought": when the current position started (MCK: Mar 2026, not its
+    // first-ever buy in 2015); for a past holding, its first buy.
+    const firstBuy = p?.since || [...trades].reverse().find(x => x.type === 'buy')?.d || p?.d;
     const sector = p?.s;
     const stat = (label, value, cls = '') => `<div><div class="kpi-label">${label}</div><div class="strong tabular ${cls}" style="font-size:16px;margin-top:2px">${value}</div></div>`;
     const sold = trades.filter(x => x.type === 'sell');
