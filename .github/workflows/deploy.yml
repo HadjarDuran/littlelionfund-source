@@ -36,16 +36,32 @@ jobs:
     defaults:
       run:
         working-directory: Lion
+    env:
+      # Mirrored into env so steps can test it (secrets can't be used in `if:`).
+      HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     steps:
+      # Until the one-time setup above is done, this backup path has nothing to
+      # deploy with. Skip cleanly instead of failing every push: the site is
+      # deployed by Cloudflare's own build, and "Verify live deployments"
+      # checks that the live site matches each commit.
+      - name: Backup deploy not set up (no CLOUDFLARE_API_TOKEN), skipping
+        if: env.HAS_TOKEN != 'true'
+        working-directory: .
+        run: echo "::notice::Skipped. The site deploys through Cloudflare's own build; see the 'Verify live deployments' run for whether it went live."
+
       - uses: actions/checkout@v4
+        if: env.HAS_TOKEN == 'true'
 
       - uses: actions/setup-node@v4
+        if: env.HAS_TOKEN == 'true'
         with:
           node-version: 22
 
       - run: npm ci
+        if: env.HAS_TOKEN == 'true'
 
       - name: Deploy
+        if: env.HAS_TOKEN == 'true'
         run: npm run deploy:ci
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -18,6 +18,28 @@ jobs:
       TEST_HOLDINGS_PWD: ${{ secrets.TEST_HOLDINGS_PWD }}
       TEST_WEIGHTINGS_PWD: ${{ secrets.TEST_WEIGHTINGS_PWD }}
     steps:
+      - uses: actions/checkout@v4
+
+      # Proves Cloudflare actually deployed THIS commit's site: the live copies
+      # of a few frontend files must be byte-identical to the ones in this
+      # commit. Cloudflare's own build (the real deploy path) finishes a minute
+      # or two after a push, so this retries for up to ~6 minutes.
+      - name: Live site is serving this commit's frontend (Cloudflare)
+        run: |
+          files="js/chart.js js/data.js js/ui.js js/app.js css/app.css"
+          for i in $(seq 1 24); do
+            bad=""
+            for f in $files; do
+              want=$(sha256sum "Lion/public/$f" | cut -d' ' -f1)
+              got=$(curl -s -H 'Cache-Control: no-cache' "$CF_URL/$f?v=$GITHUB_SHA" | sha256sum | cut -d' ' -f1)
+              [ "$want" = "$got" ] || bad="$bad $f"
+            done
+            if [ -z "$bad" ]; then echo "Live site matches commit $GITHUB_SHA ($files)"; exit 0; fi
+            echo "attempt $i: live copy differs for:$bad (deploy still running?)"; sleep 15
+          done
+          echo "::error::The live site is not serving this commit's files after 6 minutes. Check Cloudflare > Workers > littlelionfunddashboard > Deployments / Builds for a failed build."
+          exit 1
+
       - name: Static site root (Cloudflare)
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" "$CF_URL/")
